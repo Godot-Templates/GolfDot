@@ -10,6 +10,23 @@ const MAX_NUM_CONTACTS := 8
 const PHYSICS_DT := 1.0 / 120.0
 const GRAVITY := -9.8
 
+# --- Continuous-collision sub-stepping ---------------------------------------
+# The solver collides the ball DISCRETELY (it only tests the ball's current
+# position each step). If the ball moves more than ~its radius in a single step
+# its centre can skip clean across a thin wall before any contact is registered,
+# OR land so deep inside the wall that the only contact found is the far face --
+# whose normal points the same way the ball is travelling, so the solver culls
+# it as "separating" and the ball sails through. Both are the "shoot the ball
+# through walls" tunneling bug.
+# To prevent it, a physics tick is split into however many equal sub-steps are
+# needed so the ball never travels more than PHYSICS_SUBSTEP_TRAVEL_FRACTION of
+# its radius between collision queries. At normal speeds this is a single step,
+# so the original Open-Golf behaviour is preserved exactly.
+const PHYSICS_SUBSTEP_TRAVEL_FRACTION := 0.5
+# Hard cap on sub-steps per tick, so a pathologically fast ball can't stall the
+# simulation. 16 covers any speed reachable in normal play with margin.
+const PHYSICS_MAX_SUBSTEPS := 16
+
 # --- Tuning constants (ported from data/config/game.cfg) ---
 const PHYSICS_HOLE_FORCE_DISTANCE := 0.5
 const PHYSICS_HOLE_FORCE := 0.05
@@ -86,7 +103,25 @@ func update(dt: float) -> void:
     var alpha := -_time_behind / PHYSICS_DT
     ball_draw_pos = ball_pos * (1.0 - alpha) + bp_prev * alpha
 
+## Advance one fixed physics tick. To avoid tunneling (see the constants above),
+## a fast-moving ball is integrated in several smaller collision sub-steps so it
+## never moves more than a fraction of its radius between collision queries. A
+## slow ball runs as a single step, identical to the original solver.
 func _physics_tick(dt: float) -> void:
+    var max_travel := ball_radius * PHYSICS_SUBSTEP_TRAVEL_FRACTION
+    var num_substeps := 1
+    if max_travel > 0.0:
+        var travel := ball_vel.length() * dt
+        if travel > max_travel:
+            num_substeps = clampi(int(ceil(travel / max_travel)), 1, PHYSICS_MAX_SUBSTEPS)
+    var sub_dt := dt / float(num_substeps)
+    for _i in num_substeps:
+        _integrate_step(sub_dt)
+
+## A single collision + integration step (port of Open-Golf's _physics_tick).
+## Always called with a dt small enough that the ball can't tunnel; callers use
+## _physics_tick(), which sub-divides fast ticks before delegating here.
+func _integrate_step(dt: float) -> void:
     var bp := ball_pos
     var br := ball_radius
     var bv := ball_vel
