@@ -45,7 +45,8 @@ var _ball_mi: MeshInstance3D
 var _aim: GolfAim
 var _aim_line: GolfAimLine
 var _overlay: GolfAimOverlay
-var _label: Label
+var _stat_line: Label
+var _status_label: Label
 var _audio: GolfAudio
 var _level_root: Node3D
 var _ui_layer: CanvasLayer
@@ -379,16 +380,19 @@ func _update_aim_circle_radius() -> void:
 
 func _update_label() -> void:
     var best_str := "--" if _best < 0 else str(_best)
-    var line1 := "Hole %d / %d    Par %d    Strokes %d    Best %s" % [
+    _stat_line.text = "Hole %d/%d    Par %d    Strokes %d    Best %s" % [
         _level_index, LEVEL_COUNT, _par, _stroke_count, best_str]
-    var line2 := "Total: %d (%s vs par)" % [_total_strokes, _par_term(_total_strokes, _total_par)] if _total_par > 0 else ""
-    var line3 := ""
+
     if _state == State.CELEBRATION or _state == State.FINISHED:
-        var tag := "  -  NEW BEST!" if _is_new_best else ""
-        line3 = "IN THE HOLE!  %d strokes (%s)%s" % [_stroke_count, _par_term(_stroke_count, _par), tag]
+        var tag := "   ★ NEW BEST!" if _is_new_best else ""
+        _status_label.text = "IN THE HOLE!  %d strokes (%s)%s" % [
+            _stroke_count, _par_term(_stroke_count, _par), tag]
+        _status_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.55))
+    elif _total_par > 0:
+        _status_label.text = "Total %d  (%s vs par)" % [_total_strokes, _par_term(_total_strokes, _total_par)]
+        _status_label.add_theme_color_override("font_color", Color(0.85, 0.92, 0.85))
     else:
-        line3 = "Mouse: press ring + drag back, release to hit   Keys: arrows aim/power, Space hit, R reset, N/P hole"
-    _label.text = "%s\n%s\n%s" % [line1, line2, line3]
+        _status_label.text = ""
 
 ## Format strokes relative to par as golf shorthand (E, -1, +2, ...).
 func _par_term(strokes: int, par: int) -> String:
@@ -433,10 +437,7 @@ func _build_ui() -> void:
     add_child(_ui_layer)
     _overlay = GolfAimOverlay.new()
     _ui_layer.add_child(_overlay)
-    _label = Label.new()
-    _label.position = Vector2(16, 16)
-    _label.add_theme_color_override("font_color", Color.BLACK)
-    _ui_layer.add_child(_label)
+    _build_scoreboard()
 
     # "Menu" button (top-right). Opens the pause overlay (also Esc / M).
     var menu_btn := Button.new()
@@ -447,6 +448,37 @@ func _build_ui() -> void:
     _ui_layer.add_child(menu_btn)
 
     _build_pause_menu()
+
+## Top-left scoreboard: a single clean stat line on a subtle panel, with a
+## small status line below for cross-hole total / celebration.
+func _build_scoreboard() -> void:
+    var hud := VBoxContainer.new()
+    hud.position = Vector2(16, 16)
+    hud.add_theme_constant_override("separation", 6)
+    _ui_layer.add_child(hud)
+
+    var panel := PanelContainer.new()
+    var sb := StyleBoxFlat.new()
+    sb.bg_color = Color(0, 0, 0, 0.45)
+    sb.set_corner_radius_all(6)
+    sb.content_margin_left = 14
+    sb.content_margin_right = 14
+    sb.content_margin_top = 8
+    sb.content_margin_bottom = 8
+    panel.add_theme_stylebox_override("panel", sb)
+    hud.add_child(panel)
+
+    _stat_line = Label.new()
+    _stat_line.add_theme_font_size_override("font_size", 16)
+    _stat_line.add_theme_color_override("font_color", Color(0.95, 0.97, 0.95))
+    panel.add_child(_stat_line)
+
+    _status_label = Label.new()
+    _status_label.add_theme_font_size_override("font_size", 13)
+    _status_label.add_theme_color_override("font_color", Color(0.85, 0.92, 0.85))
+    _status_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+    _status_label.add_theme_constant_override("outline_size", 4)
+    hud.add_child(_status_label)
 
 # --- Pause menu --------------------------------------------------------------
 
