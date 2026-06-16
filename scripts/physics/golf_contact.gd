@@ -28,32 +28,32 @@ var impulse_mag: float = 0.0
 
 ## Direct port of golf_ball_contact().
 static func make(a: Vector3, b: Vector3, c: Vector3, vel: Vector3, bp: Vector3, br: float,
-		cp: Vector3, dist: float, p_restitution: float, p_friction: float, p_vel_scale: float,
-		p_type: int, p_is_water: bool, p_water_dir: Vector3, p_is_out_of_bounds: bool) -> GolfContact:
-	var contact := GolfContact.new()
-	contact.is_water = p_is_water
-	contact.is_ignored = false
-	contact.position = cp
-	contact.triangle_normal = (b - a).cross(c - a).normalized()
-	# The C original trusts mesh winding for outward normals. Godot meshes
-	# (BoxMesh, imported OBJ) may be wound either way, so orient the face normal
-	# toward the ball - always correct for a ball outside solid geometry.
-	if contact.triangle_normal.dot(bp - cp) < 0.0:
-		contact.triangle_normal = -contact.triangle_normal
-	if p_type == GolfMath.ContactType.FACE:
-		contact.normal = contact.triangle_normal
-	else:
-		contact.normal = (bp - cp).normalized()
-	contact.velocity = vel
-	contact.triangle_a = a
-	contact.triangle_b = b
-	contact.triangle_c = c
-	contact.restitution = p_restitution
-	contact.friction = p_friction
-	contact.vel_scale = p_vel_scale
-	contact.type = p_type
-	contact.penetration = br - dist
-	contact.water_dir = p_water_dir
-	contact.is_out_of_bounds = p_is_out_of_bounds
-	contact.distance = dist
-	return contact
+        cp: Vector3, dist: float, p_restitution: float, p_friction: float, p_vel_scale: float,
+        p_type: int, p_is_water: bool, p_water_dir: Vector3, p_is_out_of_bounds: bool) -> GolfContact:
+    var contact := GolfContact.new()
+    contact.is_water = p_is_water
+    contact.is_ignored = false
+    contact.position = cp
+    contact.triangle_normal = (b - a).cross(c - a).normalized()
+    # The C original trusts mesh winding for outward normals. Godot meshes
+    # (BoxMesh, imported OBJ) may be wound either way, so orient the face normal
+    # toward the ball - always correct for a ball outside solid geometry.
+    if contact.triangle_normal.dot(bp - cp) < 0.0:
+        contact.triangle_normal = -contact.triangle_normal
+    if p_type == GolfMath.ContactType.FACE:
+        contact.normal = contact.triangle_normal
+    else:
+        contact.normal = (bp - cp).normalized()
+    contact.velocity = vel
+    contact.triangle_a = a
+    contact.triangle_b = b
+    contact.triangle_c = c
+    contact.restitution = p_restitution
+    contact.friction = p_friction
+    contact.vel_scale = p_vel_scale
+    contact.type = p_type
+    contact.penetration = br - dist
+    contact.water_dir = p_water_dir
+    contact.is_out_of_bounds = p_is_out_of_bounds
+    contact.distance = dist
+    return contact

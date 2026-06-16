@@ -79,7 +79,7 @@ func get_camera_zone_angle(ball_draw_pos: Vector3, hole_pos: Vector3) -> float:
 
 func _find_camera_zone(pos: Vector3) -> GolfCameraZone:
     for zone in camera_zones:
-        if zone.contains_point(pos):
+        if is_instance_valid(zone) and zone.contains_point(pos):
             return zone
     return null
 

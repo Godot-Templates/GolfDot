@@ -12,16 +12,16 @@ extends Node3D
 @export var cup_mesh: MeshInstance3D
 
 func get_hole_position() -> Vector3:
-	return global_transform.origin
+    return global_transform.origin
 
 ## Cup triangles in world space (flat, 3 verts per tri), or empty.
 func get_cup_triangles() -> PackedVector3Array:
-	if cup_mesh == null or cup_mesh.mesh == null:
-		return PackedVector3Array()
-	var local: PackedVector3Array = cup_mesh.mesh.get_faces()
-	var xform: Transform3D = cup_mesh.global_transform
-	var out := PackedVector3Array()
-	out.resize(local.size())
-	for i in local.size():
-		out[i] = xform * local[i]
-	return out
+    if cup_mesh == null or cup_mesh.mesh == null:
+        return PackedVector3Array()
+    var local: PackedVector3Array = cup_mesh.mesh.get_faces()
+    var xform: Transform3D = cup_mesh.global_transform
+    var out := PackedVector3Array()
+    out.resize(local.size())
+    for i in local.size():
+        out[i] = xform * local[i]
+    return out

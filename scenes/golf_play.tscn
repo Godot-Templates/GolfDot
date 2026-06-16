@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b8golfplay0001"]
+
+[ext_resource type="Script" path="res://scripts/golf_play.gd" id="1_play"]
+
+[node name="GolfPlay" type="Node3D"]
+script = ExtResource("1_play")
