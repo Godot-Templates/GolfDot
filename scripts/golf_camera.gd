@@ -14,8 +14,22 @@ const CELEBRATION_LENGTH := 1.0
 const CAM_OFFSET := Vector3(2.6, 1.5, 0)
 const LOOK_AT_OFFSET := Vector3(0, 0.3, 0)
 
+# Orbit distance + pitch derived from CAM_OFFSET, so the default view matches the
+# original rig. `pitch` is the camera's elevation angle above the ball (radians),
+# adjustable via the pan controls and clamped to keep the ball in frame.
+const CAM_DISTANCE := 3.0017  # CAM_OFFSET.length()
+const PITCH_MIN := 0.12
+const PITCH_MAX := 1.35
+
 var angle: float = 0.0
+var pitch: float = 0.5236  # atan2(1.5, 2.6) — matches CAM_OFFSET's elevation
 var auto_rotate: bool = true
+
+## The orbit offset for the current angle + pitch (replaces the fixed CAM_OFFSET).
+func get_orbit_offset() -> Vector3:
+    var horiz := cos(pitch) * CAM_DISTANCE
+    var vert := sin(pitch) * CAM_DISTANCE
+    return Vector3(horiz, vert, 0).rotated(Vector3.UP, angle)
 
 # Internal world-space position/direction (mirrors graphics->cam_pos/cam_dir).
 var _cam_pos: Vector3 = Vector3.ZERO
@@ -53,7 +67,7 @@ func update_follow(ball_draw_pos: Vector3, hole_pos: Vector3, _dt: float) -> voi
         delta_angle = atan2(sin(delta_angle), cos(delta_angle))
         angle += delta_angle * CAM_AUTO_ROTATE_SPEED
 
-    var cam_delta := CAM_OFFSET.rotated(Vector3.UP, angle)
+    var cam_delta := get_orbit_offset()
     var wanted_pos := ball_draw_pos + cam_delta
     _cam_pos += (wanted_pos - _cam_pos) * 0.5
     _cam_dir = (ball_draw_pos + LOOK_AT_OFFSET - _cam_pos).normalized()
@@ -90,7 +104,7 @@ func start_begin_animation(begin_pos: Vector3, hole_pos: Vector3, ball_draw_pos:
     _begin_t = 0.0
     _begin_pos0 = begin_pos
     _begin_dir0 = (hole_pos - begin_pos).normalized()
-    var cam_delta := CAM_OFFSET.rotated(Vector3.UP, angle)
+    var cam_delta := get_orbit_offset()
     _begin_pos1 = ball_draw_pos + cam_delta
     _begin_dir1 = (ball_draw_pos + LOOK_AT_OFFSET - _begin_pos1).normalized()
     _cam_pos = _begin_pos0

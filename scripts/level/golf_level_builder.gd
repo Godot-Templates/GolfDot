@@ -12,7 +12,7 @@ extends RefCounted
 ##   { node: Node3D, base_transform: Dictionary, movement: Dictionary, surfaces: Array[GolfSurface] }
 
 const BALL_MESH := preload("res://assets/models/golf_ball.obj")
-const HOLE_MESH := preload("res://Open-Golf/data/models/hole.obj")
+const HOLE_MESH := preload("res://assets/models/hole.obj")
 const ENV_SHADER := preload("res://scripts/level/environment_material.gdshader")
 
 # Fallback material when a model group's material isn't defined in the level
@@ -173,12 +173,7 @@ func _build_camera_zone(e: Dictionary, wt: Dictionary) -> void:
 
 func _build_model(e: Dictionary, wt: Dictionary, result: Dictionary) -> void:
     var path: String = e["model_path"]
-    # Try the designated path, then fallback to Open-Golf data folder if it exists.
     var mesh: Mesh = load(path) as Mesh
-    if mesh == null:
-        var og_path := path.replace("res://assets/", "res://Open-Golf/data/")
-        mesh = load(og_path) as Mesh
-    
     if mesh == null:
         return
     var xform := GolfTransformUtil.to_transform3d(wt)

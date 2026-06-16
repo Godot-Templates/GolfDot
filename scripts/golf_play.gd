@@ -15,6 +15,11 @@ const BALL_RADIUS := 0.12
 const LEVEL_COUNT := 20
 const FINISH_ADVANCE_DELAY := 2.5
 
+# Left-click drag (outside the ball's aim ring) pans/orbits the camera around the
+# ball. Radians per pixel — horizontal orbit and vertical tilt.
+const PAN_SENSITIVITY := 0.0025
+const PAN_PITCH_SENSITIVITY := 0.0025
+
 var _level_index: int = 1
 var _finish_timer: float = 0.0
 
@@ -57,6 +62,7 @@ var _kb_power: float = 0.55
 var _mouse_was_down: bool = false
 var _aim_circle_radius: float = 60.0
 var _aim_is_keyboard: bool = false
+var _panning: bool = false
 
 func _ready() -> void:
     _build_environment()
@@ -85,6 +91,27 @@ func _unhandled_input(event: InputEvent) -> void:
                 load_level_index(_level_index - 1)
             KEY_ESCAPE, KEY_M:
                 _toggle_pause()
+
+    # Left-click drag OUTSIDE the ball's aim ring orbits the camera around the
+    # ball (horizontal pan + vertical tilt). Pressing ON the ring still starts
+    # aiming, so the two don't conflict. Panning turns off auto-rotate so the
+    # chosen view sticks.
+    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+        if event.pressed:
+            if not _paused and _camera != null and _physics != null \
+                    and (_state == State.WAITING or _state == State.WATCHING):
+                var ball_screen := _camera.unproject_position(_physics.ball_draw_pos)
+                if event.position.distance_to(ball_screen) > _aim_circle_radius:
+                    _panning = true
+        else:
+            _panning = false
+
+    if event is InputEventMouseMotion and _panning and _camera != null:
+        _camera.auto_rotate = false
+        _camera.angle -= event.relative.x * PAN_SENSITIVITY
+        _camera.pitch = clampf(
+            _camera.pitch + event.relative.y * PAN_PITCH_SENSITIVITY,
+            GolfCamera.PITCH_MIN, GolfCamera.PITCH_MAX)
 
 ## (Re)load a level by res:// path and reset the state machine.
 func load_level(path: String) -> void:
