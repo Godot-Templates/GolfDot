@@ -41,6 +41,26 @@ func _ready() -> void:
         btn.pressed.connect(_on_level_pressed.bind(i))
         grid.add_child(btn)
 
+    var total_label := Label.new()
+    total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    total_label.add_theme_font_size_override("font_size", 18)
+    vbox.add_child(total_label)
+
+    var total_par := 0
+    var all_completed := true
+    for i in range(1, LEVEL_COUNT + 1):
+        total_par += GolfScores.get_par(i)
+        if GolfScores.get_best(i) < 0:
+            all_completed = false
+
+    if all_completed:
+        var total_best := 0
+        for i in range(1, LEVEL_COUNT + 1):
+            total_best += GolfScores.get_best(i)
+        total_label.text = "Total: Par %d  —  Best %d  (%+d)" % [total_par, total_best, total_best - total_par]
+    else:
+        total_label.text = "Total: Par %d  —  Best --" % [total_par]
+
     var credits_btn := Button.new()
     credits_btn.text = "Credits"
     credits_btn.custom_minimum_size = Vector2(0, 44)
