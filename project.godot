@@ -11,9 +11,14 @@ config_version=5
 [application]
 
 config/name="Golfdot"
-run/main_scene="uid://b8golfselect001"
+run/main_scene="uid://b8golfmenu0001"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+ZivaState="*res://ziva_state.gd"
+Leaderboard="*res://scripts/leaderboard.gd"
 
 [display]
 
@@ -31,3 +36,9 @@ renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 2d/snap/snap_2d_transforms_to_pixel="false"
 2d/snap/snap_2d_vertices_to_pixel="false"
+
+[ziva]
+
+multiplayer/user_id="ef5qPz5y3EoAfw0X1wTMQ1683c4S2nyU"
+multiplayer/relay_url="wss://ziva-multiplayer-staging.ziva-multiplayer.workers.dev"
+multiplayer/game_id="729a2ad764a06c0845e0396eb00e06"

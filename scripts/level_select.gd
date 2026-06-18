@@ -4,7 +4,7 @@ extends Control
 
 const LEVEL_COUNT := 20
 const PLAY_SCENE := "res://scenes/golf_play.tscn"
-const CREDITS_SCENE := "res://scenes/credits.tscn"
+const MENU_SCENE := "res://scenes/main_menu.tscn"
 
 func _ready() -> void:
     var bg := ColorRect.new()
@@ -61,14 +61,14 @@ func _ready() -> void:
     else:
         total_label.text = "Total: Par %d  —  Best --" % [total_par]
 
-    var credits_btn := Button.new()
-    credits_btn.text = "Credits"
-    credits_btn.custom_minimum_size = Vector2(0, 44)
-    credits_btn.pressed.connect(_on_credits_pressed)
-    vbox.add_child(credits_btn)
+    var back_btn := Button.new()
+    back_btn.text = "Back"
+    back_btn.custom_minimum_size = Vector2(0, 44)
+    back_btn.pressed.connect(_on_back_pressed)
+    vbox.add_child(back_btn)
 
-func _on_credits_pressed() -> void:
-    get_tree().change_scene_to_file(CREDITS_SCENE)
+func _on_back_pressed() -> void:
+    get_tree().change_scene_to_file(MENU_SCENE)
 
 func _on_level_pressed(idx: int) -> void:
     var packed: PackedScene = load(PLAY_SCENE)

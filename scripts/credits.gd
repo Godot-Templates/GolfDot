@@ -3,7 +3,7 @@ extends Control
 ## Golfdot began as a Godot port of mgerdes' Open-Golf; this screen credits that
 ## work and the third-party assets it brought along.
 
-const SELECT_SCENE := "res://scenes/level_select.tscn"
+const MENU_SCENE := "res://scenes/main_menu.tscn"
 
 const LINK_COLOR := Color(0.55, 0.75, 1.0)
 const LINK_HOVER_COLOR := Color(0.75, 0.88, 1.0)
@@ -88,4 +88,4 @@ func _make_link(text: String, url: String) -> Control:
     return cell
 
 func _on_back_pressed() -> void:
-    get_tree().change_scene_to_file(SELECT_SCENE)
+    get_tree().change_scene_to_file(MENU_SCENE)

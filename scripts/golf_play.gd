@@ -51,6 +51,11 @@ var _audio: GolfAudio
 var _level_root: Node3D
 var _ui_layer: CanvasLayer
 
+# In-level highscores board overlay (top players for the current hole).
+var _board_overlay: Control
+var _board_list: VBoxContainer
+var _board_status: Label
+
 var _ball_start: Vector3 = Vector3.ZERO
 var _hole_pos: Vector3 = Vector3.ZERO
 var _begin_cam_pos: Vector3 = Vector3(6, 5, -4)
@@ -360,6 +365,24 @@ func _record_hole_score() -> void:
     _best = GolfScores.get_best(_level_index)
     _total_strokes += _stroke_count
     _total_par += _par
+    _submit_to_leaderboard()
+
+## Publish this hole's best to the global durable leaderboard, plus the full
+## 20-hole course total once every hole has a local best. Reached via the node
+## tree so it degrades cleanly if the autoload is absent.
+func _submit_to_leaderboard() -> void:
+    var lb := get_node_or_null("/root/Leaderboard")
+    if lb == null:
+        return
+    var pname := PlayerProfile.get_player_name()
+    lb.submit_hole(_level_index, pname, _best)
+    var total := 0
+    for i in range(1, LEVEL_COUNT + 1):
+        var b := GolfScores.get_best(i)
+        if b < 0:
+            return
+        total += b
+    lb.submit_total(pname, total)
 
 func _reset_ball() -> void:
     _physics.place_ball(_ball_start)
@@ -479,6 +502,14 @@ func _build_scoreboard() -> void:
     _status_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
     _status_label.add_theme_constant_override("outline_size", 4)
     hud.add_child(_status_label)
+
+    # "Highscores" button sits directly beneath the HUD; opens the per-hole
+    # top-players board for the level currently being played.
+    var board_btn := Button.new()
+    board_btn.text = "Highscores"
+    board_btn.custom_minimum_size = Vector2(120, 30)
+    board_btn.pressed.connect(_toggle_board)
+    hud.add_child(board_btn)
 
 # --- Pause menu --------------------------------------------------------------
 
@@ -619,3 +650,119 @@ func _show_round_summary() -> void:
     vbox.add_child(menu)
 
     _ui_layer.add_child(panel)
+
+# --- In-level highscores board ----------------------------------------------
+
+## Show/hide the per-hole top-players board. Built lazily on first open and
+## refreshed live from the Leaderboard autoload's `updated` signal.
+func _toggle_board() -> void:
+    if _board_overlay == null:
+        _build_board_overlay()
+    _board_overlay.visible = not _board_overlay.visible
+    if _board_overlay.visible:
+        _refresh_board()
+
+func _build_board_overlay() -> void:
+    _board_overlay = Control.new()
+    _board_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+    _board_overlay.visible = false
+    _ui_layer.add_child(_board_overlay)
+
+    var dim := ColorRect.new()
+    dim.color = Color(0, 0, 0, 0.55)
+    dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+    _board_overlay.add_child(dim)
+
+    var center := CenterContainer.new()
+    center.set_anchors_preset(Control.PRESET_FULL_RECT)
+    _board_overlay.add_child(center)
+
+    var panel := PanelContainer.new()
+    panel.custom_minimum_size = Vector2(360, 0)
+    center.add_child(panel)
+
+    var vbox := VBoxContainer.new()
+    vbox.add_theme_constant_override("separation", 10)
+    panel.add_child(vbox)
+
+    var title := Label.new()
+    title.text = "Hole Highscores"
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.add_theme_font_size_override("font_size", 26)
+    vbox.add_child(title)
+
+    _board_status = Label.new()
+    _board_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _board_status.add_theme_font_size_override("font_size", 13)
+    _board_status.modulate = Color(0.7, 0.8, 0.9)
+    vbox.add_child(_board_status)
+
+    _board_list = VBoxContainer.new()
+    _board_list.add_theme_constant_override("separation", 4)
+    _board_list.custom_minimum_size = Vector2(320, 0)
+    vbox.add_child(_board_list)
+
+    var close := Button.new()
+    close.text = "Close"
+    close.pressed.connect(_toggle_board)
+    vbox.add_child(close)
+
+    var lb := get_node_or_null("/root/Leaderboard")
+    if lb != null and not lb.updated.is_connected(_refresh_board):
+        lb.updated.connect(_refresh_board)
+
+## Repopulate the board list with the top players for the current hole.
+func _refresh_board() -> void:
+    if _board_list == null:
+        return
+    for c in _board_list.get_children():
+        c.queue_free()
+
+    var lb := get_node_or_null("/root/Leaderboard")
+    if lb == null:
+        _board_status.text = "Leaderboard unavailable."
+        return
+
+    _board_status.text = "Hole %d  •  %s" % [
+        _level_index, ("Online" if lb.is_online() else "Local only — enable multiplayer for global scores")]
+
+    var board: Array = lb.get_hole_board(_level_index)
+    if board.is_empty():
+        var empty := Label.new()
+        empty.text = "No scores yet — be the first!"
+        empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        _board_list.add_child(empty)
+        return
+
+    var me := PlayerProfile.get_player_name()
+    for i in range(board.size()):
+        var entry: Dictionary = board[i]
+        var row := _make_board_row(i + 1, String(entry["name"]), int(entry["strokes"]), String(entry["name"]) == me)
+        _board_list.add_child(row)
+
+## One "rank. name .... strokes" row, highlighting the local player.
+func _make_board_row(rank: int, player_name: String, strokes: int, is_me: bool) -> Control:
+    var row := HBoxContainer.new()
+    row.add_theme_constant_override("separation", 8)
+
+    var rank_label := Label.new()
+    rank_label.text = "%d." % rank
+    rank_label.custom_minimum_size = Vector2(28, 0)
+    row.add_child(rank_label)
+
+    var name_label := Label.new()
+    name_label.text = player_name + (" (you)" if is_me else "")
+    name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    row.add_child(name_label)
+
+    var score_label := Label.new()
+    score_label.text = str(strokes)
+    score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+    row.add_child(score_label)
+
+    if is_me:
+        var hl := Color(0.55, 1.0, 0.6)
+        rank_label.add_theme_color_override("font_color", hl)
+        name_label.add_theme_color_override("font_color", hl)
+        score_label.add_theme_color_override("font_color", hl)
+    return row
