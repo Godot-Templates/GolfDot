@@ -16,37 +16,37 @@ const MAX_NAME_LENGTH := 16
 
 ## True once the player has chosen a (non-empty) name.
 static func has_player_name() -> bool:
-	return get_player_name() != ""
+    return get_player_name() != ""
 
 ## The stored player name, or "" if none has been set yet.
 ## NOTE: not named get_name() to avoid colliding with Object.get_name().
 static func get_player_name() -> String:
-	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK:
-		return ""
-	return str(cfg.get_value(SAVE_SECTION, NAME_KEY, ""))
+    var cfg := ConfigFile.new()
+    if cfg.load(SAVE_PATH) != OK:
+        return ""
+    return str(cfg.get_value(SAVE_SECTION, NAME_KEY, ""))
 
 ## Persist a chosen name. Returns true if it was valid and saved.
 ## NOTE: not named set_name() to avoid colliding with Object.set_name().
 static func set_player_name(value: String) -> bool:
-	var clean := sanitize(value)
-	if clean == "":
-		return false
-	var cfg := ConfigFile.new()
-	cfg.load(SAVE_PATH)  # ignore error; may not exist yet
-	cfg.set_value(SAVE_SECTION, NAME_KEY, clean)
-	return cfg.save(SAVE_PATH) == OK
+    var clean := sanitize(value)
+    if clean == "":
+        return false
+    var cfg := ConfigFile.new()
+    cfg.load(SAVE_PATH)  # ignore error; may not exist yet
+    cfg.set_value(SAVE_SECTION, NAME_KEY, clean)
+    return cfg.save(SAVE_PATH) == OK
 
 ## Trim, collapse whitespace and clamp to the allowed length. Returns "" if the
 ## result is empty (i.e. not an acceptable name).
 static func sanitize(value: String) -> String:
-	var clean := value.strip_edges()
-	if clean.length() > MAX_NAME_LENGTH:
-		clean = clean.substr(0, MAX_NAME_LENGTH)
-	if clean.length() < MIN_NAME_LENGTH:
-		return ""
-	return clean
+    var clean := value.strip_edges()
+    if clean.length() > MAX_NAME_LENGTH:
+        clean = clean.substr(0, MAX_NAME_LENGTH)
+    if clean.length() < MIN_NAME_LENGTH:
+        return ""
+    return clean
 
 ## True if the given string would be accepted by set_name().
 static func is_valid(value: String) -> bool:
-	return sanitize(value) != ""
+    return sanitize(value) != ""

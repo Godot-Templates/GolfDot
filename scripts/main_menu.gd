@@ -11,9 +11,6 @@ const LEVEL_SELECT_SCENE := "res://scenes/level_select.tscn"
 const HIGHSCORES_SCENE := "res://scenes/highscores.tscn"
 const CREDITS_SCENE := "res://scenes/credits.tscn"
 
-# Top-5 overall board shown in the corner of the menu.
-var _top_list: VBoxContainer
-
 func _ready() -> void:
     # First-launch gate: force name entry before showing the menu.
     if not PlayerProfile.has_player_name():
@@ -82,76 +79,6 @@ func _ready() -> void:
     credits_btn.grow_vertical = Control.GROW_DIRECTION_BEGIN
     credits_btn.pressed.connect(_goto.bind(CREDITS_SCENE))
     add_child(credits_btn)
-
-    _build_top_panel()
-
-## A compact "Top Golfers" board pinned to the top-left of the menu, showing the
-## global best players by lowest total strokes. Backed by the Leaderboard
-## autoload (durable, shared); refreshes live as scores arrive.
-func _build_top_panel() -> void:
-    var panel := PanelContainer.new()
-    panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-    panel.offset_left = 16
-    panel.offset_top = 16
-    panel.offset_right = 256
-    panel.grow_horizontal = Control.GROW_DIRECTION_END
-    panel.grow_vertical = Control.GROW_DIRECTION_END
-
-    var vbox := VBoxContainer.new()
-    vbox.add_theme_constant_override("separation", 6)
-    panel.add_child(vbox)
-
-    var header := Label.new()
-    header.text = "Top Golfers"
-    header.add_theme_font_size_override("font_size", 18)
-    vbox.add_child(header)
-
-    var sub := Label.new()
-    sub.text = "lowest total across all holes"
-    sub.add_theme_font_size_override("font_size", 11)
-    sub.modulate = Color(0.7, 0.8, 0.9)
-    vbox.add_child(sub)
-
-    _top_list = VBoxContainer.new()
-    _top_list.add_theme_constant_override("separation", 3)
-    vbox.add_child(_top_list)
-
-    add_child(panel)
-
-    var lb := get_node_or_null("/root/Leaderboard")
-    if lb != null and not lb.updated.is_connected(_refresh_top):
-        lb.updated.connect(_refresh_top)
-    _refresh_top()
-
-func _refresh_top() -> void:
-    if _top_list == null:
-        return
-    for c in _top_list.get_children():
-        c.queue_free()
-
-    var lb := get_node_or_null("/root/Leaderboard")
-    if lb == null:
-        return
-    var board: Array = lb.get_overall_board()
-    if board.is_empty():
-        var empty := Label.new()
-        empty.text = "No scores yet"
-        empty.add_theme_font_size_override("font_size", 13)
-        empty.modulate = Color(0.7, 0.8, 0.9)
-        _top_list.add_child(empty)
-        return
-
-    var me := PlayerProfile.get_player_name()
-    var shown: int = mini(board.size(), 5)
-    for i in range(shown):
-        var entry: Dictionary = board[i]
-        var label := Label.new()
-        var is_me: bool = String(entry["name"]) == me
-        label.text = "%d. %s — %d" % [i + 1, String(entry["name"]), int(entry["strokes"])]
-        label.add_theme_font_size_override("font_size", 14)
-        if is_me:
-            label.add_theme_color_override("font_color", Color(0.55, 1.0, 0.6))
-        _top_list.add_child(label)
 
 func _spacer(height: int) -> Control:
     var s := Control.new()
