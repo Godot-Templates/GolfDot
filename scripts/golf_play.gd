@@ -1,3 +1,4 @@
+class_name GolfPlay
 extends Node3D
 ## Plays a ported Open-Golf level. Loads a .level file via GolfLevelData +
 ## GolfLevelBuilder, then drives it through the same state machine / camera rig /
@@ -12,6 +13,9 @@ extends Node3D
 
 const BALL_MESH := preload("res://assets/models/golf_ball.obj")
 const BALL_RADIUS := 0.12
+
+# Height (world units) of the floating nameplate above the ball's center.
+const NAME_PLATE_HEIGHT := 0.5
 const LEVEL_COUNT := 20
 const FINISH_ADVANCE_DELAY := 2.5
 
@@ -32,7 +36,8 @@ var _total_strokes: int = 0
 var _total_par: int = 0
 var _summary_shown: bool = false
 var _paused: bool = false
-var _pause_menu: Control
+@onready var _pause_menu: Control = $UI/PauseMenu
+@onready var _volume_slider: HSlider = $UI/PauseMenu/Center/Panel/VBox/VolRow/VolumeSlider
 
 const MENU_SCENE := "res://scenes/level_select.tscn"
 
@@ -42,19 +47,23 @@ var _world: GolfCollisionWorld
 var _physics: GolfPhysics
 var _camera: GolfCamera
 var _ball_mi: MeshInstance3D
+var _name_plate: Label3D
 var _aim: GolfAim
-var _aim_line: GolfAimLine
-var _overlay: GolfAimOverlay
-var _stat_line: Label
-var _status_label: Label
+@onready var _aim_line: GolfAimLine = $AimLine
+@onready var _overlay: GolfAimOverlay = $UI/AimOverlay
+@onready var _stat_line: Label = $UI/HUD/Panel/StatLine
+@onready var _status_label: Label = $UI/HUD/StatusLabel
 var _audio: GolfAudio
 var _level_root: Node3D
-var _ui_layer: CanvasLayer
+@onready var _ui_layer: CanvasLayer = $UI
+
+# Multiplayer: broadcasts our ball position and renders other players' ghost balls.
+var _net: GolfNet
 
 # In-level highscores board overlay (top players for the current hole).
-var _board_overlay: Control
-var _board_list: VBoxContainer
-var _board_status: Label
+@onready var _board_overlay: Control = $UI/BoardOverlay
+@onready var _board_list: VBoxContainer = $UI/BoardOverlay/Center/Panel/VBox/BoardList
+@onready var _board_status: Label = $UI/BoardOverlay/Center/Panel/VBox/BoardStatus
 
 var _ball_start: Vector3 = Vector3.ZERO
 var _hole_pos: Vector3 = Vector3.ZERO
@@ -73,6 +82,10 @@ var _panning: bool = false
 func _ready() -> void:
     _build_environment()
     _build_ui()
+    _net = GolfNet.new()
+    _net.name = "Net"
+    add_child(_net)
+    _net.set_local_name(PlayerProfile.get_player_name())
     _level_index = _index_from_path(level_path)
     load_level(level_path)
 
@@ -176,6 +189,7 @@ func load_level(path: String) -> void:
     if _ball_mi != null:
         _ball_mi.queue_free()
     _build_ball()
+    _build_name_plate()
 
     _stroke_count = 0
     _finish_timer = 0.0
@@ -189,6 +203,11 @@ func load_level(path: String) -> void:
     var start_angle := _camera.get_camera_zone_angle(_ball_start, _hole_pos)
     _camera.start_begin_animation(_begin_cam_pos, _hole_pos, _ball_start, start_angle)
     print("Level %s baked %d collision triangles, %d movers" % [path, _world.triangle_count(), _movers.size()])
+
+    # Join (or switch to) the relay room for this hole so players on the same hole
+    # see each other's balls.
+    if _net != null:
+        _net.join_room("hole_%d" % _level_index)
 
 func _physics_process(delta: float) -> void:
     if _physics == null or _paused:
@@ -228,6 +247,8 @@ func _physics_process(delta: float) -> void:
     _audio.set_water(_physics.ball_is_in_water)
     _update_ball_transform()
     _update_label()
+    if _net != null:
+        _net.update_local_pos(_physics.ball_draw_pos)
 
 # --- State: waiting for aim --------------------------------------------------
 
@@ -336,6 +357,8 @@ func _update_watching() -> void:
         # ball.start_pos), not the tee.
         _audio.play_out_of_bounds()
         _physics.place_ball(_physics.ball_start_pos)
+        if _net != null:
+            _net.broadcast_place(_physics.ball_start_pos)
         _camera.auto_rotate = false
         _state = State.WAITING
     elif not _physics.ball_is_moving:
@@ -347,8 +370,13 @@ func _hit_ball() -> void:
     _stroke_count += 1
     var dir := _aim.get_aim_direction(_camera.angle)
     var speed := _aim.get_launch_speed()
+    var launch_start := _physics.ball_pos
+    var launch_vel := dir * speed
     _camera.auto_rotate = true
-    _physics.launch(dir * speed)
+    _physics.launch(launch_vel)
+    # Broadcast the shot so remote peers replay it with real physics.
+    if _net != null:
+        _net.broadcast_shot(launch_start, launch_vel)
     _audio.play_hit()
     _aim_line.clear()
     _overlay.active = false
@@ -386,13 +414,30 @@ func _submit_to_leaderboard() -> void:
 
 func _reset_ball() -> void:
     _physics.place_ball(_ball_start)
+    if _net != null:
+        _net.broadcast_place(_ball_start)
     _state = State.WAITING
+
+## Build a physics sim for a remote player's ghost ball. It SHARES this level's
+## static collision world (read-only queries) and hole set, so a replayed shot
+## behaves identically to the local ball. skip_mover_update keeps it from fighting
+## the local solver over the shared movers (the local sim already drives them).
+func make_ghost_physics() -> GolfPhysics:
+    var p := GolfPhysics.new()
+    p.ball_radius = BALL_RADIUS
+    p.world = _world
+    p.skip_mover_update = true
+    for h in _physics.holes:
+        p.holes.append(h)
+    return p
 
 # --- Visual updates ----------------------------------------------------------
 
 func _update_ball_transform() -> void:
     var b := Basis(_physics.ball_orientation).scaled(Vector3.ONE * BALL_RADIUS)
     _ball_mi.transform = Transform3D(b, _physics.ball_draw_pos)
+    if _name_plate != null:
+        _name_plate.position = _physics.ball_draw_pos + Vector3.UP * NAME_PLATE_HEIGHT
 
 func _update_aim_circle_radius() -> void:
     var ball_screen := _camera.unproject_position(_physics.ball_draw_pos)
@@ -453,127 +498,54 @@ func _build_ball() -> void:
     _ball_mi.material_override = mat
     add_child(_ball_mi)
 
+## Build the floating nameplate that hovers above the local player's ball.
+func _build_name_plate() -> void:
+    if _name_plate != null:
+        _name_plate.queue_free()
+    _name_plate = make_name_plate(PlayerProfile.get_player_name())
+    add_child(_name_plate)
+
+## Create a billboarded world-space nameplate for a player. Kept static and
+## parameterized so multiplayer can spawn one above every remote ball too:
+## just call make_name_plate(remote_name) and position it over that ball.
+static func make_name_plate(player_name: String) -> Label3D:
+    var label := Label3D.new()
+    label.name = "NamePlate"
+    label.text = player_name if player_name.strip_edges() != "" else "Player"
+    # Always face the camera and keep a constant on-screen size regardless of
+    # distance, so far-away balls stay readable (good for spectating others).
+    label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+    label.fixed_size = true
+    label.no_depth_test = true
+    label.pixel_size = 0.0006
+    label.font_size = 64
+    label.outline_size = 14
+    label.modulate = Color(1, 1, 1)
+    label.outline_modulate = Color(0, 0, 0, 0.85)
+    # Draw on top of the ball/world so the text is never clipped by geometry.
+    label.render_priority = 2
+    label.outline_render_priority = 1
+    return label
+
+## The UI (scoreboard, menu button, pause menu, highscores board, aim overlay,
+## aim line) now lives in the scene tree (golf_play.tscn) and is referenced via
+## the @onready vars above. This only initializes runtime-only state that can't
+## be authored in the scene.
 func _build_ui() -> void:
-    _aim_line = GolfAimLine.new()
-    add_child(_aim_line)
-    _ui_layer = CanvasLayer.new()
-    add_child(_ui_layer)
-    _overlay = GolfAimOverlay.new()
-    _ui_layer.add_child(_overlay)
-    _build_scoreboard()
+    # Sync the volume slider to the current master-bus level.
+    var bus := AudioServer.get_bus_index("Master")
+    _volume_slider.value = db_to_linear(AudioServer.get_bus_volume_db(bus))
 
-    # "Menu" button (top-right). Opens the pause overlay (also Esc / M).
-    var menu_btn := Button.new()
-    menu_btn.text = "Menu (Esc)"
-    menu_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-    menu_btn.position = Vector2(-128, 12)
-    menu_btn.pressed.connect(_toggle_pause)
-    _ui_layer.add_child(menu_btn)
-
-    _build_pause_menu()
-
-## Top-left scoreboard: a single clean stat line on a subtle panel, with a
-## small status line below for cross-hole total / celebration.
-func _build_scoreboard() -> void:
-    var hud := VBoxContainer.new()
-    hud.position = Vector2(16, 16)
-    hud.add_theme_constant_override("separation", 6)
-    _ui_layer.add_child(hud)
-
-    var panel := PanelContainer.new()
-    var sb := StyleBoxFlat.new()
-    sb.bg_color = Color(0, 0, 0, 0.45)
-    sb.set_corner_radius_all(6)
-    sb.content_margin_left = 14
-    sb.content_margin_right = 14
-    sb.content_margin_top = 8
-    sb.content_margin_bottom = 8
-    panel.add_theme_stylebox_override("panel", sb)
-    hud.add_child(panel)
-
-    _stat_line = Label.new()
-    _stat_line.add_theme_font_size_override("font_size", 16)
-    _stat_line.add_theme_color_override("font_color", Color(0.95, 0.97, 0.95))
-    panel.add_child(_stat_line)
-
-    _status_label = Label.new()
-    _status_label.add_theme_font_size_override("font_size", 13)
-    _status_label.add_theme_color_override("font_color", Color(0.85, 0.92, 0.85))
-    _status_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
-    _status_label.add_theme_constant_override("outline_size", 4)
-    hud.add_child(_status_label)
-
-    # "Highscores" button sits directly beneath the HUD; opens the per-hole
-    # top-players board for the level currently being played.
-    var board_btn := Button.new()
-    board_btn.text = "Highscores"
-    board_btn.custom_minimum_size = Vector2(120, 30)
-    board_btn.pressed.connect(_toggle_board)
-    hud.add_child(board_btn)
+    # Live-refresh the in-level board when the leaderboard updates.
+    var lb := get_node_or_null("/root/Leaderboard")
+    if lb != null and not lb.updated.is_connected(_refresh_board):
+        lb.updated.connect(_refresh_board)
 
 # --- Pause menu --------------------------------------------------------------
 
-func _build_pause_menu() -> void:
-    _pause_menu = Control.new()
-    _pause_menu.set_anchors_preset(Control.PRESET_FULL_RECT)
-    _pause_menu.visible = false
-    _ui_layer.add_child(_pause_menu)
-
-    var dim := ColorRect.new()
-    dim.color = Color(0, 0, 0, 0.55)
-    dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-    _pause_menu.add_child(dim)
-
-    var center := CenterContainer.new()
-    center.set_anchors_preset(Control.PRESET_FULL_RECT)
-    _pause_menu.add_child(center)
-
-    var panel := PanelContainer.new()
-    panel.custom_minimum_size = Vector2(320, 0)
-    center.add_child(panel)
-
-    var vbox := VBoxContainer.new()
-    vbox.add_theme_constant_override("separation", 14)
-    panel.add_child(vbox)
-
-    var title := Label.new()
-    title.text = "Paused"
-    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    title.add_theme_font_size_override("font_size", 30)
-    vbox.add_child(title)
-
-    # Volume control (master bus).
-    var vol_row := HBoxContainer.new()
-    vol_row.add_theme_constant_override("separation", 10)
-    vbox.add_child(vol_row)
-    var vol_label := Label.new()
-    vol_label.text = "Volume"
-    vol_row.add_child(vol_label)
-    var slider := HSlider.new()
-    slider.min_value = 0.0
-    slider.max_value = 1.0
-    slider.step = 0.01
-    slider.custom_minimum_size = Vector2(180, 0)
-    slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    var bus := AudioServer.get_bus_index("Master")
-    slider.value = db_to_linear(AudioServer.get_bus_volume_db(bus))
-    slider.value_changed.connect(_on_volume_changed)
-    vol_row.add_child(slider)
-
-    var resume := Button.new()
-    resume.text = "Resume"
-    resume.pressed.connect(_toggle_pause)
-    vbox.add_child(resume)
-
-    var restart := Button.new()
-    restart.text = "Restart Hole"
-    restart.pressed.connect(func() -> void: load_level_index(_level_index))
-    vbox.add_child(restart)
-
-    var to_menu := Button.new()
-    to_menu.text = "Level Select"
-    to_menu.pressed.connect(_go_to_menu)
-    vbox.add_child(to_menu)
+## Restart the current hole (wired to the pause menu's "Restart Hole" button).
+func _restart_hole() -> void:
+    load_level_index(_level_index)
 
 func _on_volume_changed(value: float) -> void:
     var bus := AudioServer.get_bus_index("Master")
@@ -653,63 +625,12 @@ func _show_round_summary() -> void:
 
 # --- In-level highscores board ----------------------------------------------
 
-## Show/hide the per-hole top-players board. Built lazily on first open and
-## refreshed live from the Leaderboard autoload's `updated` signal.
+## Show/hide the per-hole top-players board. The board lives in the scene tree;
+## it is refreshed live from the Leaderboard autoload's `updated` signal.
 func _toggle_board() -> void:
-    if _board_overlay == null:
-        _build_board_overlay()
     _board_overlay.visible = not _board_overlay.visible
     if _board_overlay.visible:
         _refresh_board()
-
-func _build_board_overlay() -> void:
-    _board_overlay = Control.new()
-    _board_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-    _board_overlay.visible = false
-    _ui_layer.add_child(_board_overlay)
-
-    var dim := ColorRect.new()
-    dim.color = Color(0, 0, 0, 0.55)
-    dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-    _board_overlay.add_child(dim)
-
-    var center := CenterContainer.new()
-    center.set_anchors_preset(Control.PRESET_FULL_RECT)
-    _board_overlay.add_child(center)
-
-    var panel := PanelContainer.new()
-    panel.custom_minimum_size = Vector2(360, 0)
-    center.add_child(panel)
-
-    var vbox := VBoxContainer.new()
-    vbox.add_theme_constant_override("separation", 10)
-    panel.add_child(vbox)
-
-    var title := Label.new()
-    title.text = "Hole Highscores"
-    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    title.add_theme_font_size_override("font_size", 26)
-    vbox.add_child(title)
-
-    _board_status = Label.new()
-    _board_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    _board_status.add_theme_font_size_override("font_size", 13)
-    _board_status.modulate = Color(0.7, 0.8, 0.9)
-    vbox.add_child(_board_status)
-
-    _board_list = VBoxContainer.new()
-    _board_list.add_theme_constant_override("separation", 4)
-    _board_list.custom_minimum_size = Vector2(320, 0)
-    vbox.add_child(_board_list)
-
-    var close := Button.new()
-    close.text = "Close"
-    close.pressed.connect(_toggle_board)
-    vbox.add_child(close)
-
-    var lb := get_node_or_null("/root/Leaderboard")
-    if lb != null and not lb.updated.is_connected(_refresh_board):
-        lb.updated.connect(_refresh_board)
 
 ## Repopulate the board list with the top players for the current hole.
 func _refresh_board() -> void:

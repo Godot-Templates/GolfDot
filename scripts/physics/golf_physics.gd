@@ -40,6 +40,9 @@ const PHYSICS_KILL_Y := -10.0
 # --- World references ---
 var world: GolfCollisionWorld
 var holes: Array[GolfHole] = []
+# When true, this instance won't drive the shared world's movers (used by remote
+# ghost balls that share another sim's world; that sim already animates them).
+var skip_mover_update: bool = false
 
 # --- Ball state (mirrors game.ball) ---
 var ball_radius: float = 0.12
@@ -129,7 +132,7 @@ func _integrate_step(dt: float) -> void:
 
     # Animate moving surfaces to the current time before collision (mirrors the
     # per-tick dynamic_bvh rebuild in game.c's _physics_tick).
-    if world != null and world.mover_count() > 0:
+    if not skip_mover_update and world != null and world.mover_count() > 0:
         world.update_movers(t)
 
     # Find the closest hole + a hole the ball is currently inside of.

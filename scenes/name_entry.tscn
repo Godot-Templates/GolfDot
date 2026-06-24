@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://b8golfname0001"]
+[gd_scene format=3 uid="uid://bqqseoncsk441"]
 
-[ext_resource type="Script" path="res://scripts/name_entry.gd" id="1_name"]
+[ext_resource type="Script" uid="uid://biynnuqsgsyqi" path="res://scripts/name_entry.gd" id="1_name"]
 
-[node name="NameEntry" type="Control"]
+[node name="NameEntry" type="Control" unique_id=789034191]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -10,3 +10,54 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_name")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1389613594]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.12, 0.16, 0.22, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=786709013]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer" unique_id=1649166741]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Title" type="Label" parent="CenterContainer/VBox" unique_id=745505789]
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "GOLFDOT"
+horizontal_alignment = 1
+
+[node name="Prompt" type="Label" parent="CenterContainer/VBox" unique_id=1834607820]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "What should we call you?"
+horizontal_alignment = 1
+
+[node name="NameEdit" type="LineEdit" parent="CenterContainer/VBox" unique_id=180838399]
+custom_minimum_size = Vector2(280, 44)
+layout_mode = 2
+placeholder_text = "Your name"
+alignment = 1
+
+[node name="Hint" type="Label" parent="CenterContainer/VBox" unique_id=1807097084]
+modulate = Color(0.7, 0.8, 0.9, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+
+[node name="SubmitBtn" type="Button" parent="CenterContainer/VBox" unique_id=208273229]
+custom_minimum_size = Vector2(280, 44)
+layout_mode = 2
+text = "Continue"

@@ -1,6 +1,203 @@
-[gd_scene load_steps=2 format=3 uid="uid://b8golfplay0001"]
+[gd_scene format=3 uid="uid://bqqseqx0ek441"]
 
-[ext_resource type="Script" path="res://scripts/golf_play.gd" id="1_play"]
+[ext_resource type="Script" uid="uid://c77u5udhr7f7i" path="res://scripts/golf_play.gd" id="1_play"]
+[ext_resource type="Script" uid="uid://cy1i4fp2x57ud" path="res://scripts/golf_aim_line.gd" id="2_aimline"]
+[ext_resource type="Script" uid="uid://crk56mhfmncm1" path="res://scripts/golf_aim_overlay.gd" id="3_overlay"]
 
-[node name="GolfPlay" type="Node3D"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud"]
+content_margin_left = 14.0
+content_margin_top = 8.0
+content_margin_right = 14.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0, 0, 0.45)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="GolfPlay" type="Node3D" unique_id=1175568865]
 script = ExtResource("1_play")
+
+[node name="AimLine" type="MeshInstance3D" parent="." unique_id=1329663560]
+script = ExtResource("2_aimline")
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=1449265546]
+
+[node name="AimOverlay" type="Control" parent="UI" unique_id=1988669809]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_overlay")
+
+[node name="HUD" type="VBoxContainer" parent="UI" unique_id=1903658928]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 16.0
+offset_bottom = 16.0
+theme_override_constants/separation = 6
+
+[node name="Panel" type="PanelContainer" parent="UI/HUD" unique_id=1142465742]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
+
+[node name="StatLine" type="Label" parent="UI/HUD/Panel" unique_id=1511430143]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.97, 0.95, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="StatusLabel" type="Label" parent="UI/HUD" unique_id=2049855520]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.92, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.7)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 13
+
+[node name="HighscoresButton" type="Button" parent="UI/HUD" unique_id=543916256]
+custom_minimum_size = Vector2(120, 30)
+layout_mode = 2
+text = "Highscores"
+
+[node name="MenuButton" type="Button" parent="UI" unique_id=1631268567]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -128.0
+offset_top = 12.0
+offset_right = -16.0
+offset_bottom = 44.0
+grow_horizontal = 0
+text = "Menu (Esc)"
+
+[node name="PauseMenu" type="Control" parent="UI" unique_id=906143974]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="UI/PauseMenu" unique_id=183951415]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Center" type="CenterContainer" parent="UI/PauseMenu" unique_id=1076365578]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="UI/PauseMenu/Center" unique_id=1121944182]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/PauseMenu/Center/Panel" unique_id=392808999]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="UI/PauseMenu/Center/Panel/VBox" unique_id=1546870482]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Paused"
+horizontal_alignment = 1
+
+[node name="VolRow" type="HBoxContainer" parent="UI/PauseMenu/Center/Panel/VBox" unique_id=1136138299]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="VolLabel" type="Label" parent="UI/PauseMenu/Center/Panel/VBox/VolRow" unique_id=309402515]
+layout_mode = 2
+text = "Volume"
+
+[node name="VolumeSlider" type="HSlider" parent="UI/PauseMenu/Center/Panel/VBox/VolRow" unique_id=1576649686]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+
+[node name="ResumeButton" type="Button" parent="UI/PauseMenu/Center/Panel/VBox" unique_id=1291806974]
+layout_mode = 2
+text = "Resume"
+
+[node name="RestartButton" type="Button" parent="UI/PauseMenu/Center/Panel/VBox" unique_id=1596047103]
+layout_mode = 2
+text = "Restart Hole"
+
+[node name="LevelSelectButton" type="Button" parent="UI/PauseMenu/Center/Panel/VBox" unique_id=284139920]
+layout_mode = 2
+text = "Level Select"
+
+[node name="BoardOverlay" type="Control" parent="UI" unique_id=1661078251]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="UI/BoardOverlay" unique_id=2091875528]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Center" type="CenterContainer" parent="UI/BoardOverlay" unique_id=2132002889]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="UI/BoardOverlay/Center" unique_id=481278378]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="UI/BoardOverlay/Center/Panel" unique_id=741774458]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="UI/BoardOverlay/Center/Panel/VBox" unique_id=227107346]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Hole Highscores"
+horizontal_alignment = 1
+
+[node name="BoardStatus" type="Label" parent="UI/BoardOverlay/Center/Panel/VBox" unique_id=1510336819]
+modulate = Color(0.7, 0.8, 0.9, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 1
+
+[node name="BoardList" type="VBoxContainer" parent="UI/BoardOverlay/Center/Panel/VBox" unique_id=554604840]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="CloseButton" type="Button" parent="UI/BoardOverlay/Center/Panel/VBox" unique_id=433962016]
+layout_mode = 2
+text = "Close"
+
+[connection signal="pressed" from="UI/HUD/HighscoresButton" to="." method="_toggle_board"]
+[connection signal="pressed" from="UI/MenuButton" to="." method="_toggle_pause"]
+[connection signal="value_changed" from="UI/PauseMenu/Center/Panel/VBox/VolRow/VolumeSlider" to="." method="_on_volume_changed"]
+[connection signal="pressed" from="UI/PauseMenu/Center/Panel/VBox/ResumeButton" to="." method="_toggle_pause"]
+[connection signal="pressed" from="UI/PauseMenu/Center/Panel/VBox/RestartButton" to="." method="_restart_hole"]
+[connection signal="pressed" from="UI/PauseMenu/Center/Panel/VBox/LevelSelectButton" to="." method="_go_to_menu"]
+[connection signal="pressed" from="UI/BoardOverlay/Center/Panel/VBox/CloseButton" to="." method="_toggle_board"]
