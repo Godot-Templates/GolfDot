@@ -17,6 +17,7 @@ extends Node
 const GHOST_SCRIPT := "res://scripts/golf_ghost_ball.gd"
 
 signal connection_problem(message: String)
+signal status_changed(text: String)
 
 var _players: Node3D
 var _spawner: MultiplayerSpawner
@@ -27,6 +28,7 @@ var _local_pos: Vector3 = Vector3.ZERO
 var _last_join_url: String = ""
 var _last_join_room: String = ""
 var _last_join_started_msec: int = 0
+var _status_text: String = "Offline"
 
 func _ready() -> void:
     _players = Node3D.new()
@@ -86,6 +88,7 @@ func join_room(room_id: String) -> void:
         return
     _leave()
     _room = room_id
+    _set_status_text("…")
 
     var user_id: String = ProjectSettings.get_setting("ziva/multiplayer/user_id", "")
     var game_id: String = ProjectSettings.get_setting("ziva/multiplayer/game_id", "")
@@ -93,6 +96,7 @@ func join_room(room_id: String) -> void:
     # Fail loudly enough to debug, but don't break local/offline play.
     if user_id.is_empty() or game_id.is_empty() or relay_url.is_empty():
         _report_problem("Ziva multiplayer settings missing. Enable multiplayer in Settings → Ziva Cloud to use online ghost balls.")
+        _set_status_text("Offline")
         return
 
     var url: String = "%s/r/%s?u=%s&g=%s&v=1" % [relay_url, room_id, user_id, game_id]
@@ -104,6 +108,7 @@ func join_room(room_id: String) -> void:
     var err: int = peer.create_client(url)
     if err != OK:
         _report_problem("create_client failed before opening the WebSocket (error %d). URL=%s" % [err, _redacted_url()])
+        _set_status_text("Offline")
         return
     multiplayer.multiplayer_peer = peer
     print("GolfNet: joining room '%s' via %s" % [room_id, relay_url])
@@ -111,6 +116,28 @@ func join_room(room_id: String) -> void:
 func _is_live() -> bool:
     var p: MultiplayerPeer = multiplayer.multiplayer_peer
     return p != null and not (p is OfflineMultiplayerPeer)
+
+func status_text() -> String:
+    return _status_text
+
+func _set_status_text(value: String) -> void:
+    if value == _status_text:
+        return
+    _status_text = value
+    status_changed.emit(_status_text)
+
+func _online_count() -> int:
+    var me: int = multiplayer.get_unique_id()
+    if me <= 1:
+        return 0
+    return _real_peers().size() + 1
+
+func _refresh_status_text() -> void:
+    var count: int = _online_count()
+    if count <= 0:
+        _set_status_text("Offline")
+    else:
+        _set_status_text("%d online" % count)
 
 func _leave() -> void:
     for c: Node in _players.get_children():
@@ -192,6 +219,7 @@ func _on_connected() -> void:
     # that may treat itself as the host floor on connect and self-spawn.
     var me: int = multiplayer.get_unique_id()
     print("GolfNet: connected to relay as peer %d (room '%s')" % [me, _room])
+    _refresh_status_text()
     _refresh_host(me == 2)
     if me == 2:
         _host_spawn_all()
@@ -200,6 +228,7 @@ func _on_peer(id: int) -> void:
     if id <= 1:
         return
     print("GolfNet: peer %d joined room '%s' (host=%d)" % [id, _room, _host])
+    _refresh_status_text()
     _refresh_host()
     _host_spawn_all()
 
@@ -208,6 +237,7 @@ func _on_peer_gone(id: int) -> void:
         _players.get_node("player_%d" % id).queue_free()
     # Reactive failover: recompute host from the (now authoritative) roster. If we
     # became the new lowest peer, adopt the spawner and re-spawn everyone present.
+    _refresh_status_text()
     _refresh_host()
     if _i_am_host():
         _host_spawn_all()
@@ -216,10 +246,12 @@ func _on_conn_failed() -> void:
     var elapsed_msec: int = max(0, Time.get_ticks_msec() - _last_join_started_msec)
     _report_problem("connection to relay failed after %d ms. room='%s', url=%s. Likely causes: %s" % [elapsed_msec, _last_join_room, _redacted_url(), _relay_failure_hint()])
     _leave()
+    _set_status_text("Offline")
 
 func _on_server_gone() -> void:
     _report_problem("relay disconnected while in room '%s'. url=%s" % [_last_join_room, _redacted_url()])
     _leave()
+    _set_status_text("Offline")
 
 # --- Spawn function (runs on every peer to build the node locally) ------------
 

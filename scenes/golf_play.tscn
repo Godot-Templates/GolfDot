@@ -57,7 +57,7 @@ theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 13
 
 [node name="HighscoresButton" type="Button" parent="UI/HUD" unique_id=543916256]
-custom_minimum_size = Vector2(120, 30)
+custom_minimum_size = Vector2(170, 30)
 layout_mode = 2
 text = "Highscores"
 

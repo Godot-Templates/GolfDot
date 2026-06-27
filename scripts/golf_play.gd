@@ -53,6 +53,7 @@ var _aim: GolfAim
 @onready var _overlay: GolfAimOverlay = $UI/AimOverlay
 @onready var _stat_line: Label = $UI/HUD/Panel/StatLine
 @onready var _status_label: Label = $UI/HUD/StatusLabel
+@onready var _highscores_button: Button = $UI/HUD/HighscoresButton
 var _audio: GolfAudio
 var _level_root: Node3D
 @onready var _ui_layer: CanvasLayer = $UI
@@ -86,6 +87,8 @@ func _ready() -> void:
     _net.name = "Net"
     add_child(_net)
     _net.set_local_name(PlayerProfile.get_player_name())
+    _net.status_changed.connect(_update_online_status)
+    _update_online_status(_net.status_text())
     _level_index = _index_from_path(level_path)
     load_level(level_path)
 
@@ -544,6 +547,10 @@ func _build_ui() -> void:
     var lb := get_node_or_null("/root/Leaderboard")
     if lb != null and not lb.updated.is_connected(_refresh_board):
         lb.updated.connect(_refresh_board)
+
+func _update_online_status(text: String) -> void:
+    if _highscores_button != null:
+        _highscores_button.text = "Highscores · %s" % text
 
 # --- In-game menu ------------------------------------------------------------
 
