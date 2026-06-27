@@ -501,7 +501,7 @@ func _build_ball() -> void:
     _ball_mi.name = "Ball"
     _ball_mi.mesh = BALL_MESH
     var mat := StandardMaterial3D.new()
-    mat.albedo_color = Color.WHITE
+    mat.albedo_color = SkinShop.color_for_skin(SkinShop.normalize_skin(PlayerProfile.get_skin()))
     _ball_mi.material_override = mat
     add_child(_ball_mi)
 

@@ -28,6 +28,28 @@ static func get_best(index: int) -> int:
         return -1
     return int(cfg.get_value(SAVE_SECTION, str(index), -1))
 
+## Number of holes with any saved completion.
+static func get_completed_count() -> int:
+    var count: int = 0
+    for i: int in range(1, LEVEL_COUNT + 1):
+        if get_best(i) >= 0:
+            count += 1
+    return count
+
+## True once every ported hole has a saved best score.
+static func all_completed() -> bool:
+    return get_completed_count() >= LEVEL_COUNT
+
+## Sum of per-hole best scores, or -1 until all holes are completed.
+static func get_total_best() -> int:
+    var total: int = 0
+    for i: int in range(1, LEVEL_COUNT + 1):
+        var best: int = get_best(i)
+        if best < 0:
+            return -1
+        total += best
+    return total
+
 ## Record a completed hole's strokes; keeps it only if it beats the stored best.
 ## Returns true if this was a new best.
 static func record(index: int, strokes: int) -> bool:

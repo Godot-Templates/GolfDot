@@ -10,6 +10,8 @@ extends RefCounted
 const SAVE_PATH := "user://profile.cfg"
 const SAVE_SECTION := "player"
 const NAME_KEY := "name"
+const SKIN_KEY := "skin"
+const DEFAULT_SKIN := "white"
 
 const MIN_NAME_LENGTH := 1
 const MAX_NAME_LENGTH := 16
@@ -35,6 +37,24 @@ static func set_player_name(value: String) -> bool:
     var cfg := ConfigFile.new()
     cfg.load(SAVE_PATH)  # ignore error; may not exist yet
     cfg.set_value(SAVE_SECTION, NAME_KEY, clean)
+    return cfg.save(SAVE_PATH) == OK
+
+## The selected ball skin id. Falls back to white if unset or no longer valid.
+static func get_skin() -> String:
+    var cfg := ConfigFile.new()
+    if cfg.load(SAVE_PATH) != OK:
+        return DEFAULT_SKIN
+    var skin: String = str(cfg.get_value(SAVE_SECTION, SKIN_KEY, DEFAULT_SKIN))
+    return skin if skin != "" else DEFAULT_SKIN
+
+## Persist a selected ball skin id.
+static func set_skin(value: String) -> bool:
+    var skin: String = value.strip_edges().to_lower()
+    if skin == "":
+        return false
+    var cfg := ConfigFile.new()
+    cfg.load(SAVE_PATH)  # ignore error; may not exist yet
+    cfg.set_value(SAVE_SECTION, SKIN_KEY, skin)
     return cfg.save(SAVE_PATH) == OK
 
 ## Trim, collapse whitespace and clamp to the allowed length. Returns "" if the

@@ -1,0 +1,169 @@
+class_name SkinShop
+extends Control
+## Menu screen for selecting unlockable golf-ball colors.
+
+const MENU_SCENE := "res://scenes/main_menu.tscn"
+const TOTAL_BEST_GOLD_REQUIREMENT := 60
+
+const SKINS: Array[Dictionary] = [
+    {"id": "white", "name": "White", "color": Color.WHITE, "description": "Default ball", "required_levels": 0, "requires_all": false, "requires_gold_total": false},
+    {"id": "pink", "name": "Pink", "color": Color(1.0, 0.28, 0.72), "description": "Beat 5 holes", "required_levels": 5, "requires_all": false, "requires_gold_total": false},
+    {"id": "orange", "name": "Orange", "color": Color(1.0, 0.48, 0.1), "description": "Beat 10 holes", "required_levels": 10, "requires_all": false, "requires_gold_total": false},
+    {"id": "brown", "name": "Brown", "color": Color(0.45, 0.25, 0.1), "description": "Beat all 20 holes", "required_levels": 20, "requires_all": true, "requires_gold_total": false},
+    {"id": "gold", "name": "Gold", "color": Color(1.0, 0.78, 0.12), "description": "Beat all 20 holes with total best par 60", "required_levels": 20, "requires_all": true, "requires_gold_total": true},
+]
+
+var _status_label: Label
+var _list: VBoxContainer
+
+static func color_for_skin(skin_id: String) -> Color:
+    var skin: Dictionary = _skin_data(skin_id)
+    return skin.get("color", Color.WHITE)
+
+static func display_name_for_skin(skin_id: String) -> String:
+    var skin: Dictionary = _skin_data(skin_id)
+    return String(skin.get("name", "White"))
+
+static func is_skin_unlocked(skin_id: String) -> bool:
+    return _is_unlocked(_skin_data(skin_id))
+
+static func normalize_skin(skin_id: String) -> String:
+    var id: String = skin_id.strip_edges().to_lower()
+    if id == "":
+        return PlayerProfile.DEFAULT_SKIN
+    var skin: Dictionary = _skin_data(id)
+    if String(skin.get("id", PlayerProfile.DEFAULT_SKIN)) != id:
+        return PlayerProfile.DEFAULT_SKIN
+    return id if _is_unlocked(skin) else PlayerProfile.DEFAULT_SKIN
+
+static func _skin_data(skin_id: String) -> Dictionary:
+    var id: String = skin_id.strip_edges().to_lower()
+    for skin: Dictionary in SKINS:
+        if String(skin.get("id", "")) == id:
+            return skin
+    return SKINS[0]
+
+static func _is_unlocked(skin: Dictionary) -> bool:
+    var completed: int = GolfScores.get_completed_count()
+    if completed < int(skin.get("required_levels", 0)):
+        return false
+    if bool(skin.get("requires_all", false)) and not GolfScores.all_completed():
+        return false
+    if bool(skin.get("requires_gold_total", false)):
+        var total_best: int = GolfScores.get_total_best()
+        if total_best < 0 or total_best > TOTAL_BEST_GOLD_REQUIREMENT:
+            return false
+    return true
+
+func _ready() -> void:
+    theme = MenuThemeBuilder.build()
+    _build_ui()
+    _refresh()
+
+func _build_ui() -> void:
+    var bg: ColorRect = ColorRect.new()
+    bg.color = Color(0.12, 0.16, 0.22)
+    bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+    add_child(bg)
+
+    var center: CenterContainer = CenterContainer.new()
+    center.set_anchors_preset(Control.PRESET_FULL_RECT)
+    add_child(center)
+
+    var panel: PanelContainer = PanelContainer.new()
+    panel.custom_minimum_size = Vector2(440, 0)
+    center.add_child(panel)
+
+    var vbox: VBoxContainer = VBoxContainer.new()
+    vbox.add_theme_constant_override("separation", 14)
+    panel.add_child(vbox)
+
+    var title: Label = Label.new()
+    title.text = "Skin Shop"
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.add_theme_font_size_override("font_size", 34)
+    vbox.add_child(title)
+
+    _status_label = Label.new()
+    _status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    vbox.add_child(_status_label)
+
+    _list = VBoxContainer.new()
+    _list.add_theme_constant_override("separation", 8)
+    vbox.add_child(_list)
+
+    var hint: Label = Label.new()
+    hint.text = "Unlocks are based on your local best scores. Multiplayer color sync will work after Ziva Cloud multiplayer is enabled for this project."
+    hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    hint.add_theme_font_size_override("font_size", 12)
+    hint.add_theme_color_override("font_color", Color(0.72, 0.82, 0.72))
+    vbox.add_child(hint)
+
+    var back_btn: Button = Button.new()
+    back_btn.text = "Back"
+    back_btn.custom_minimum_size = Vector2(0, 44)
+    back_btn.pressed.connect(_on_back_pressed)
+    vbox.add_child(back_btn)
+
+func _refresh() -> void:
+    for child: Node in _list.get_children():
+        child.queue_free()
+
+    var selected: String = normalize_skin(PlayerProfile.get_skin())
+    if selected != PlayerProfile.get_skin():
+        PlayerProfile.set_skin(selected)
+
+    var completed: int = GolfScores.get_completed_count()
+    var total_best: int = GolfScores.get_total_best()
+    var total_text: String = "--" if total_best < 0 else str(total_best)
+    _status_label.text = "Selected: %s\nProgress: %d/20 holes beaten · Total best: %s" % [display_name_for_skin(selected), completed, total_text]
+
+    for skin: Dictionary in SKINS:
+        _list.add_child(_make_skin_row(skin, selected))
+
+func _make_skin_row(skin: Dictionary, selected: String) -> Control:
+    var row: HBoxContainer = HBoxContainer.new()
+    row.add_theme_constant_override("separation", 10)
+
+    var swatch: ColorRect = ColorRect.new()
+    swatch.color = skin.get("color", Color.WHITE)
+    swatch.custom_minimum_size = Vector2(36, 36)
+    row.add_child(swatch)
+
+    var label: Label = Label.new()
+    var id: String = String(skin.get("id", "white"))
+    var unlocked: bool = _is_unlocked(skin)
+    var suffix: String = "  ✓ Selected" if id == selected else ""
+    label.text = "%s%s\n%s" % [String(skin.get("name", "White")), suffix, _unlock_text(skin, unlocked)]
+    label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    row.add_child(label)
+
+    var btn: Button = Button.new()
+    btn.custom_minimum_size = Vector2(108, 38)
+    btn.text = "Selected" if id == selected else ("Use" if unlocked else "Locked")
+    btn.disabled = (not unlocked) or id == selected
+    if unlocked and id != selected:
+        btn.pressed.connect(_on_skin_pressed.bind(id))
+    row.add_child(btn)
+
+    return row
+
+func _unlock_text(skin: Dictionary, unlocked: bool) -> String:
+    if unlocked:
+        return String(skin.get("description", "Unlocked"))
+    if bool(skin.get("requires_gold_total", false)):
+        return "Locked — beat all 20 holes with total best 60 or better"
+    if bool(skin.get("requires_all", false)):
+        return "Locked — beat all 20 holes"
+    return "Locked — beat %d holes" % int(skin.get("required_levels", 0))
+
+func _on_skin_pressed(skin_id: String) -> void:
+    if not is_skin_unlocked(skin_id):
+        return
+    PlayerProfile.set_skin(skin_id)
+    _refresh()
+
+func _on_back_pressed() -> void:
+    get_tree().change_scene_to_file(MENU_SCENE)

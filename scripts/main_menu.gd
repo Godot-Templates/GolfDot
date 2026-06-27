@@ -10,6 +10,7 @@ extends Control
 
 const NAME_ENTRY_SCENE := "res://scenes/name_entry.tscn"
 const LEVEL_SELECT_SCENE := "res://scenes/level_select.tscn"
+const SKIN_SHOP_SCENE := "res://scenes/skin_shop.tscn"
 const HIGHSCORES_SCENE := "res://scenes/highscores.tscn"
 const CREDITS_SCENE := "res://scenes/credits.tscn"
 
@@ -29,6 +30,9 @@ func _ready() -> void:
 
 func _on_level_select_pressed() -> void:
     _goto(LEVEL_SELECT_SCENE)
+
+func _on_skin_shop_pressed() -> void:
+    _goto(SKIN_SHOP_SCENE)
 
 func _on_highscores_pressed() -> void:
     _goto(HIGHSCORES_SCENE)

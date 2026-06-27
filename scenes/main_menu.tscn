@@ -53,7 +53,7 @@ mouse_filter = 2
 
 [node name="VBox" type="VBoxContainer" parent="Center" unique_id=1266588763]
 layout_mode = 2
-theme_override_constants/separation = 18
+theme_override_constants/separation = 14
 alignment = 1
 
 [node name="Title" type="Label" parent="Center/VBox" unique_id=1220565861]
@@ -81,6 +81,11 @@ layout_mode = 2
 custom_minimum_size = Vector2(260, 52)
 layout_mode = 2
 text = "Level Select"
+
+[node name="SkinShopButton" type="Button" parent="Center/VBox"]
+custom_minimum_size = Vector2(260, 52)
+layout_mode = 2
+text = "Skin Shop"
 
 [node name="HighscoresButton" type="Button" parent="Center/VBox" unique_id=1093076832]
 custom_minimum_size = Vector2(260, 52)
@@ -111,6 +116,7 @@ grow_vertical = 0
 text = "Credits"
 
 [connection signal="pressed" from="Center/VBox/LevelSelectButton" to="." method="_on_level_select_pressed"]
+[connection signal="pressed" from="Center/VBox/SkinShopButton" to="." method="_on_skin_shop_pressed"]
 [connection signal="pressed" from="Center/VBox/HighscoresButton" to="." method="_on_highscores_pressed"]
 [connection signal="pressed" from="Center/VBox/ChangeNameButton" to="." method="_on_change_name_pressed"]
 [connection signal="pressed" from="CreditsButton" to="." method="_on_credits_pressed"]
