@@ -82,7 +82,7 @@ custom_minimum_size = Vector2(260, 52)
 layout_mode = 2
 text = "Level Select"
 
-[node name="SkinShopButton" type="Button" parent="Center/VBox"]
+[node name="SkinShopButton" type="Button" parent="Center/VBox" unique_id=233434300]
 custom_minimum_size = Vector2(260, 52)
 layout_mode = 2
 text = "Skin Shop"

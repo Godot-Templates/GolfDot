@@ -36,6 +36,7 @@ var _total_strokes: int = 0
 var _total_par: int = 0
 var _summary_shown: bool = false
 var _menu_open: bool = false
+var _presence: Node = null
 @onready var _pause_menu: Control = $UI/PauseMenu
 @onready var _volume_slider: HSlider = $UI/PauseMenu/Center/Panel/VBox/VolRow/VolumeSlider
 
@@ -51,9 +52,10 @@ var _name_plate: Label3D
 var _aim: GolfAim
 @onready var _aim_line: GolfAimLine = $AimLine
 @onready var _overlay: GolfAimOverlay = $UI/AimOverlay
-@onready var _stat_line: Label = $UI/HUD/Panel/StatLine
+@onready var _hud_panel: PanelContainer = $UI/HUD/Panel
+@onready var _stat_line: Label = $UI/HUD/Panel/ScoreRow/StatLine
 @onready var _status_label: Label = $UI/HUD/StatusLabel
-@onready var _highscores_button: Button = $UI/HUD/HighscoresButton
+@onready var _highscores_button: Button = $UI/HUD/Panel/ScoreRow/HighscoresButton
 var _audio: GolfAudio
 var _level_root: Node3D
 @onready var _ui_layer: CanvasLayer = $UI
@@ -463,9 +465,8 @@ func _update_aim_circle_radius() -> void:
     _aim_circle_radius = r if r > 16.0 else 60.0
 
 func _update_label() -> void:
-    var best_str := "--" if _best < 0 else str(_best)
-    _stat_line.text = "Hole %d/%d    Par %d    Strokes %d    Best %s" % [
-        _level_index, LEVEL_COUNT, _par, _stroke_count, best_str]
+    _stat_line.text = "Hole %02d  ·  Par %d  ·  Strokes %d" % [_level_index, _par, _stroke_count]
+    _refresh_scorecard_tooltip()
 
     if _state == State.CELEBRATION or _state == State.FINISHED:
         var tag := "   NEW BEST!" if _is_new_best else ""
@@ -548,18 +549,108 @@ static func make_name_plate(player_name: String) -> Label3D:
 ## the @onready vars above. This only initializes runtime-only state that can't
 ## be authored in the scene.
 func _build_ui() -> void:
+    _apply_menu_theme()
+
+    _presence = get_node_or_null("/root/MultiplayerManager")
+    if _presence != null and _presence.has_signal("presence_counts_changed"):
+        var counts_signal: Signal = _presence.get("presence_counts_changed")
+        if not counts_signal.is_connected(_on_presence_counts_changed):
+            counts_signal.connect(_on_presence_counts_changed)
+
     # Sync the volume slider to the current master-bus level.
-    var bus := AudioServer.get_bus_index("Master")
+    var bus: int = AudioServer.get_bus_index("Master")
     _volume_slider.value = db_to_linear(AudioServer.get_bus_volume_db(bus))
 
     # Live-refresh the in-level board when the leaderboard updates.
-    var lb := get_node_or_null("/root/Leaderboard")
+    var lb: Node = get_node_or_null("/root/Leaderboard")
     if lb != null and not lb.updated.is_connected(_refresh_board):
         lb.updated.connect(_refresh_board)
 
-func _update_online_status(text: String) -> void:
-    if _highscores_button != null:
-        _highscores_button.text = "Highscores · %s" % text
+func _apply_menu_theme() -> void:
+    var shared_theme: Theme = MenuThemeBuilder.build()
+    var menu_button: Button = $UI/MenuButton
+    var pause_panel: PanelContainer = $UI/PauseMenu/Center/Panel
+    var pause_title: Label = $UI/PauseMenu/Center/Panel/VBox/Title
+    var volume_label: Label = $UI/PauseMenu/Center/Panel/VBox/VolRow/VolLabel
+    var board_panel: PanelContainer = $UI/BoardOverlay/Center/Panel
+    var board_title: Label = $UI/BoardOverlay/Center/Panel/VBox/Title
+
+    _pause_menu.theme = shared_theme
+    _board_overlay.theme = shared_theme
+    _hud_panel.theme = shared_theme
+    _highscores_button.theme = shared_theme
+    menu_button.theme = shared_theme
+
+    _hud_panel.add_theme_stylebox_override("panel", _scorecard_box())
+    pause_panel.add_theme_stylebox_override("panel", MenuThemeBuilder.panel_box())
+    board_panel.add_theme_stylebox_override("panel", MenuThemeBuilder.panel_box())
+    MenuThemeBuilder.style_title(pause_title, 30)
+    MenuThemeBuilder.style_title(board_title, 26)
+    volume_label.add_theme_color_override("font_color", MenuThemeBuilder.COL_TEXT)
+    _style_scorecard_icon_button()
+
+func _style_scorecard_icon_button() -> void:
+    _highscores_button.add_theme_stylebox_override("normal", _scorecard_icon_box(Color(0, 0, 0, 0.0), Color(0.86, 0.93, 0.80, 0.18), 0))
+    _highscores_button.add_theme_stylebox_override("hover", _scorecard_icon_box(Color(0.95, 0.86, 0.35, 0.14), Color(0.95, 0.86, 0.35, 0.55), 1))
+    _highscores_button.add_theme_stylebox_override("pressed", _scorecard_icon_box(Color(0.95, 0.86, 0.35, 0.24), Color(0.95, 0.86, 0.35, 0.75), 1))
+    _highscores_button.add_theme_stylebox_override("focus", _scorecard_icon_box(Color(0, 0, 0, 0.0), MenuThemeBuilder.COL_FOCUS, 1))
+    _highscores_button.add_theme_color_override("font_color", Color(0.96, 0.88, 0.34))
+    _highscores_button.add_theme_color_override("font_hover_color", Color(1.0, 0.94, 0.48))
+    _highscores_button.add_theme_color_override("font_pressed_color", Color(1.0, 0.98, 0.72))
+    _highscores_button.add_theme_font_size_override("font_size", 24)
+
+func _update_online_status(_text: String) -> void:
+    _refresh_scorecard_tooltip()
+
+func _on_presence_counts_changed(_counts: Dictionary) -> void:
+    _refresh_scorecard_tooltip()
+
+func _refresh_scorecard_tooltip() -> void:
+    if _highscores_button == null:
+        return
+    var best_str: String = "--" if _best < 0 else str(_best)
+    var online_text: String = _net.status_text() if _net != null else "Offline"
+    var player_count: int = _players_on_current_hole()
+    _highscores_button.tooltip_text = "Best: %s\nOnline: %s\n%s\nClick for highscores" % [
+        best_str,
+        online_text,
+        _players_text(player_count),
+    ]
+
+func _players_on_current_hole() -> int:
+    if _presence != null and _presence.has_method("get_level_count"):
+        return int(_presence.call("get_level_count", _level_index))
+    return 0
+
+func _players_text(count: int) -> String:
+    if count <= 0:
+        return "No player count yet"
+    return "1 player on this hole" if count == 1 else "%d players on this hole" % count
+
+func _scorecard_box() -> StyleBoxFlat:
+    var sb: StyleBoxFlat = MenuThemeBuilder.panel_box()
+    sb.bg_color = Color(0.02, 0.05, 0.04, 0.68)
+    sb.content_margin_left = 14
+    sb.content_margin_right = 10
+    sb.content_margin_top = 7
+    sb.content_margin_bottom = 7
+    sb.set_corner_radius_all(12)
+    sb.shadow_color = Color(0, 0, 0, 0.24)
+    sb.shadow_size = 5
+    sb.shadow_offset = Vector2(0, 2)
+    return sb
+
+func _scorecard_icon_box(fill: Color, border: Color, border_width: int) -> StyleBoxFlat:
+    var sb: StyleBoxFlat = StyleBoxFlat.new()
+    sb.bg_color = fill
+    sb.border_color = border
+    sb.set_border_width_all(border_width)
+    sb.set_corner_radius_all(8)
+    sb.content_margin_left = 5
+    sb.content_margin_right = 5
+    sb.content_margin_top = 1
+    sb.content_margin_bottom = 1
+    return sb
 
 # --- In-game menu ------------------------------------------------------------
 
@@ -568,7 +659,7 @@ func _restart_hole() -> void:
     load_level_index(_level_index)
 
 func _on_volume_changed(value: float) -> void:
-    var bus := AudioServer.get_bus_index("Master")
+    var bus: int = AudioServer.get_bus_index("Master")
     AudioServer.set_bus_volume_db(bus, linear_to_db(maxf(value, 0.0001)))
     AudioServer.set_bus_mute(bus, value <= 0.0)
 
@@ -616,28 +707,29 @@ func _go_to_menu() -> void:
 ## hole, with options to return to the menu or replay from hole 1.
 func _show_round_summary() -> void:
     _summary_shown = true
-    var panel := PanelContainer.new()
+    var panel: PanelContainer = PanelContainer.new()
+    panel.theme = MenuThemeBuilder.build()
+    panel.add_theme_stylebox_override("panel", MenuThemeBuilder.panel_box())
     panel.set_anchors_preset(Control.PRESET_CENTER)
     panel.position = Vector2(-180, -110)
     panel.custom_minimum_size = Vector2(360, 220)
 
-    var vbox := VBoxContainer.new()
+    var vbox: VBoxContainer = VBoxContainer.new()
     vbox.add_theme_constant_override("separation", 12)
     panel.add_child(vbox)
 
-    var title := Label.new()
+    var title: Label = Label.new()
     title.text = "Round Complete!"
-    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    title.add_theme_font_size_override("font_size", 28)
+    MenuThemeBuilder.style_title(title, 28)
     vbox.add_child(title)
 
-    var stats := Label.new()
+    var stats: Label = Label.new()
     stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     stats.text = "Total: %d strokes\nPar: %d\nScore: %s" % [
         _total_strokes, _total_par, _par_term(_total_strokes, _total_par)]
     vbox.add_child(stats)
 
-    var replay := Button.new()
+    var replay: Button = Button.new()
     replay.text = "Play Again (Hole 1)"
     replay.pressed.connect(func() -> void:
         panel.queue_free()
@@ -646,7 +738,7 @@ func _show_round_summary() -> void:
         load_level_index(1))
     vbox.add_child(replay)
 
-    var menu := Button.new()
+    var menu: Button = Button.new()
     menu.text = "Back to Menu"
     menu.pressed.connect(_go_to_menu)
     vbox.add_child(menu)

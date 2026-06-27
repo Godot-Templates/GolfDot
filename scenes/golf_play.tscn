@@ -36,18 +36,29 @@ script = ExtResource("3_overlay")
 [node name="HUD" type="VBoxContainer" parent="UI" unique_id=1903658928]
 offset_left = 16.0
 offset_top = 16.0
-offset_right = 16.0
-offset_bottom = 16.0
+offset_right = 340.0
+offset_bottom = 90.0
 theme_override_constants/separation = 6
 
 [node name="Panel" type="PanelContainer" parent="UI/HUD" unique_id=1142465742]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
 
-[node name="StatLine" type="Label" parent="UI/HUD/Panel" unique_id=1511430143]
+[node name="ScoreRow" type="HBoxContainer" parent="UI/HUD/Panel"]
 layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="StatLine" type="Label" parent="UI/HUD/Panel/ScoreRow" unique_id=1511430143]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.95, 0.97, 0.95, 1)
 theme_override_font_sizes/font_size = 16
+
+[node name="HighscoresButton" type="Button" parent="UI/HUD/Panel/ScoreRow" unique_id=543916256]
+custom_minimum_size = Vector2(38, 30)
+layout_mode = 2
+tooltip_text = "Click for highscores"
+text = "▦"
 
 [node name="StatusLabel" type="Label" parent="UI/HUD" unique_id=2049855520]
 layout_mode = 2
@@ -55,11 +66,6 @@ theme_override_colors/font_color = Color(0.85, 0.92, 0.85, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.7)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 13
-
-[node name="HighscoresButton" type="Button" parent="UI/HUD" unique_id=543916256]
-custom_minimum_size = Vector2(170, 30)
-layout_mode = 2
-text = "Highscores"
 
 [node name="MenuButton" type="Button" parent="UI" unique_id=1631268567]
 anchors_preset = 1
@@ -194,7 +200,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 text = "Close"
 
-[connection signal="pressed" from="UI/HUD/HighscoresButton" to="." method="_toggle_board"]
+[connection signal="pressed" from="UI/HUD/Panel/ScoreRow/HighscoresButton" to="." method="_toggle_board"]
 [connection signal="pressed" from="UI/MenuButton" to="." method="_toggle_menu"]
 [connection signal="value_changed" from="UI/PauseMenu/Center/Panel/VBox/VolRow/VolumeSlider" to="." method="_on_volume_changed"]
 [connection signal="pressed" from="UI/PauseMenu/Center/Panel/VBox/ResumeButton" to="." method="_toggle_menu"]
