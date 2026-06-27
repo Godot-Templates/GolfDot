@@ -9,7 +9,6 @@ const MENU_SCENE := "res://scenes/main_menu.tscn"
 var _player_labels: Dictionary = {}
 var _presence: Node = null
 var _total_label: Label
-var _status_label: Label
 
 func _ready() -> void:
     theme = MenuThemeBuilder.build()
@@ -54,7 +53,7 @@ func _build_ui() -> void:
     safe.add_child(vbox)
 
     var title: Label = Label.new()
-    title.text = "⛳  SELECT HOLE"
+    title.text = "SELECT HOLE"
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
     title.add_theme_constant_override("outline_size", 6)
@@ -99,14 +98,9 @@ func _build_ui() -> void:
     footer.add_theme_constant_override("separation", 12)
     vbox.add_child(footer)
 
-    _status_label = Label.new()
-    _status_label.text = "Active players update live"
-    _status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    _status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    _status_label.add_theme_color_override("font_color", Color(0.72, 0.84, 0.72))
-    _status_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.75))
-    _status_label.add_theme_constant_override("outline_size", 3)
-    footer.add_child(_status_label)
+    var footer_spacer: Control = Control.new()
+    footer_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    footer.add_child(footer_spacer)
 
     var back_btn: Button = Button.new()
     back_btn.text = "Back"

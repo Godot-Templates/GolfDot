@@ -468,7 +468,7 @@ func _update_label() -> void:
         _level_index, LEVEL_COUNT, _par, _stroke_count, best_str]
 
     if _state == State.CELEBRATION or _state == State.FINISHED:
-        var tag := "   ★ NEW BEST!" if _is_new_best else ""
+        var tag := "   NEW BEST!" if _is_new_best else ""
         _status_label.text = "IN THE HOLE!  %d strokes (%s)%s" % [
             _stroke_count, _par_term(_stroke_count, _par), tag]
         _status_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.55))

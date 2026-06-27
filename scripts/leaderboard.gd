@@ -24,7 +24,7 @@ extends Node
 
 const ROOM_ID := "golfdot-leaderboard-v1"
 const LEVEL_COUNT := 20
-const MAX_ENTRIES := 10
+const MAX_ENTRIES := 20
 
 ## Fires whenever a board changes (new submission, snapshot on join, or a remote
 ## peer's write arrives). UI screens connect to this to refresh themselves.

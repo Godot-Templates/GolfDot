@@ -17,7 +17,6 @@ corner_radius_bottom_left = 6
 
 [node name="GolfPlay" type="Node3D" unique_id=1175568865]
 script = ExtResource("1_play")
-level_path = null
 
 [node name="AimLine" type="MeshInstance3D" parent="." unique_id=1329663560]
 script = ExtResource("2_aimline")

@@ -4,6 +4,11 @@ extends RefCounted
 ## that lighten on hover and sink on press, with a soft accent border. Assign the
 ## returned Theme to a Control and every Button beneath it inherits the look.
 
+# Bundled emoji fallback for Web exports. Browsers do not expose their system
+# emoji fonts to Godot's canvas renderer, so labels need an exported font that
+# contains the emoji glyphs we use in menu titles.
+const EMOJI_FONT := preload("res://assets/fonts/NotoColorEmoji.ttf")
+
 # Fairway / green palette.
 const COL_NORMAL := Color(0.17, 0.43, 0.25)
 const COL_HOVER := Color(0.24, 0.57, 0.33)
@@ -13,6 +18,9 @@ const COL_FOCUS := Color(0.95, 0.86, 0.35, 0.9)    # warm "flag" yellow focus ri
 
 static func build() -> Theme:
 	var t := Theme.new()
+	var emoji_fallback := FontVariation.new()
+	emoji_fallback.fallbacks = [EMOJI_FONT]
+	t.set_default_font(emoji_fallback)
 	t.set_stylebox("normal", "Button", _box(COL_NORMAL, COL_BORDER, 1))
 	t.set_stylebox("hover", "Button", _box(COL_HOVER, COL_BORDER, 1))
 	t.set_stylebox("pressed", "Button", _box(COL_PRESSED, COL_BORDER, 1))
