@@ -99,6 +99,14 @@ func _index_from_path(path: String) -> int:
             digits += c
     return clampi(int(digits) if not digits.is_empty() else 1, 1, LEVEL_COUNT)
 
+func _exit_tree() -> void:
+    _set_presence_hole(0)
+
+func _set_presence_hole(hole: int) -> void:
+    var presence: Node = get_node_or_null("/root/MultiplayerManager")
+    if presence != null and presence.has_method("set_current_hole"):
+        presence.call("set_current_hole", hole)
+
 ## Load a level by its 1-based index (1..LEVEL_COUNT).
 func load_level_index(idx: int) -> void:
     _level_index = clampi(idx, 1, LEVEL_COUNT)
@@ -208,6 +216,7 @@ func load_level(path: String) -> void:
     var start_angle := _camera.get_camera_zone_angle(_ball_start, _hole_pos)
     _camera.start_begin_animation(_begin_cam_pos, _hole_pos, _ball_start, start_angle)
     print("Level %s baked %d collision triangles, %d movers" % [path, _world.triangle_count(), _movers.size()])
+    _set_presence_hole(_level_index)
 
     # Join (or switch to) the relay room for this hole so players on the same hole
     # see each other's balls.
