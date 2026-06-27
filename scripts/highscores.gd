@@ -8,6 +8,8 @@ const LEVEL_COUNT := 20
 
 var _board_title: Label
 var _board_list: VBoxContainer
+var _selector_list: VBoxContainer
+var _overall_slot: VBoxContainer
 var _status: Label
 var _selected_level: int = 0 # 0 = overall, 1..20 = hole board
 
@@ -17,8 +19,8 @@ func _ready() -> void:
     var lb: Node = get_node_or_null("/root/Leaderboard")
     if lb != null and lb.has_signal("updated"):
         var updated_signal: Signal = lb.get("updated")
-        if not updated_signal.is_connected(_refresh_board):
-            updated_signal.connect(_refresh_board)
+        if not updated_signal.is_connected(_refresh_all):
+            updated_signal.connect(_refresh_all)
     _select_overall()
 
 func _build_ui() -> void:
@@ -110,14 +112,15 @@ func _make_selector_panel() -> Control:
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     vbox.add_child(scroll)
 
-    var list: VBoxContainer = VBoxContainer.new()
-    list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    list.add_theme_constant_override("separation", 10)
-    scroll.add_child(list)
+    _selector_list = VBoxContainer.new()
+    _selector_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _selector_list.add_theme_constant_override("separation", 10)
+    scroll.add_child(_selector_list)
 
-    for i: int in range(1, LEVEL_COUNT + 1):
-        list.add_child(_make_hole_button(i))
-    vbox.add_child(_make_overall_button())
+    _overall_slot = VBoxContainer.new()
+    _overall_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    vbox.add_child(_overall_slot)
+    _refresh_selector()
     return panel
 
 func _make_board_panel() -> Control:
@@ -156,19 +159,46 @@ func _make_board_panel() -> Control:
     scroll.add_child(_board_list)
     return panel
 
+func _refresh_all() -> void:
+    _refresh_selector()
+    _refresh_board()
+
+func _refresh_selector() -> void:
+    if _selector_list == null or _overall_slot == null:
+        return
+    for child: Node in _selector_list.get_children():
+        child.queue_free()
+    for child: Node in _overall_slot.get_children():
+        child.queue_free()
+    for i: int in range(1, LEVEL_COUNT + 1):
+        _selector_list.add_child(_make_hole_button(i))
+    _overall_slot.add_child(_make_overall_button())
+
 func _make_hole_button(idx: int) -> Button:
-    var best: int = GolfScores.get_best(idx)
-    var best_text: String = "Best --" if best < 0 else "Best %d" % best
-    var btn: Button = _make_selector_button("Hole %02d" % idx, "Par %d" % GolfScores.get_par(idx), best_text)
+    var your_best: int = GolfScores.get_best(idx)
+    var your_text: String = "Your best: --" if your_best < 0 else "Your best: %d" % your_best
+    var global_text: String = _global_best_text(idx)
+    var btn: Button = _make_selector_button("Hole %02d" % idx, "Par %d   ·   Best: %s" % [GolfScores.get_par(idx), global_text], your_text)
     btn.pressed.connect(_select_hole.bind(idx))
     return btn
 
 func _make_overall_button() -> Button:
     var total: int = GolfScores.get_total_best()
-    var best_text: String = "Best --" if total < 0 else "Best %d" % total
-    var btn: Button = _make_selector_button("Overall", "All 20 holes", best_text)
+    var your_text: String = "Your best: --" if total < 0 else "Your best: %d" % total
+    var global_text: String = _global_best_text(0)
+    var btn: Button = _make_selector_button("Overall", "All 20 holes   ·   Best: %s" % global_text, your_text)
     btn.pressed.connect(_select_overall)
     return btn
+
+func _global_best_text(level: int) -> String:
+    var lb: Node = get_node_or_null("/root/Leaderboard")
+    if lb == null:
+        return "--"
+    var board: Array = lb.call("get_overall_board") if level == 0 else lb.call("get_hole_board", level)
+    if board.is_empty():
+        return "--"
+    var top_entry: Dictionary = board[0]
+    return str(int(top_entry.get("strokes", -1)))
 
 func _make_selector_button(title_text: String, detail_text: String, right_text: String) -> Button:
     var btn: Button = Button.new()
@@ -206,7 +236,7 @@ func _make_selector_button(title_text: String, detail_text: String, right_text: 
 
     var right: Label = Label.new()
     right.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    right.custom_minimum_size = Vector2(90, 0)
+    right.custom_minimum_size = Vector2(128, 0)
     right.text = right_text
     right.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
     right.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
