@@ -35,7 +35,7 @@ var _is_new_best: bool = false
 var _total_strokes: int = 0
 var _total_par: int = 0
 var _summary_shown: bool = false
-var _paused: bool = false
+var _menu_open: bool = false
 @onready var _pause_menu: Control = $UI/PauseMenu
 @onready var _volume_slider: HSlider = $UI/PauseMenu/Center/Panel/VBox/VolRow/VolumeSlider
 
@@ -105,11 +105,13 @@ func _unhandled_input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo:
         match event.keycode:
             KEY_N, KEY_BRACKETRIGHT:
-                load_level_index(_level_index + 1)
+                if not _menu_open:
+                    load_level_index(_level_index + 1)
             KEY_P, KEY_BRACKETLEFT:
-                load_level_index(_level_index - 1)
+                if not _menu_open:
+                    load_level_index(_level_index - 1)
             KEY_ESCAPE, KEY_M:
-                _toggle_pause()
+                _toggle_menu()
 
     # Left-click drag OUTSIDE the ball's aim ring orbits the camera around the
     # ball (horizontal pan + vertical tilt). Pressing ON the ring still starts
@@ -117,7 +119,7 @@ func _unhandled_input(event: InputEvent) -> void:
     # chosen view sticks.
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
         if event.pressed:
-            if not _paused and _camera != null and _physics != null \
+            if not _menu_open and _camera != null and _physics != null \
                     and (_state == State.WAITING or _state == State.WATCHING):
                 var ball_screen := _camera.unproject_position(_physics.ball_draw_pos)
                 if event.position.distance_to(ball_screen) > _aim_circle_radius:
@@ -198,7 +200,7 @@ func load_level(path: String) -> void:
     _scored = false
     _is_new_best = false
     _summary_shown = false
-    _set_paused(false)
+    _set_menu_open(false)
     _state = State.BEGIN
     var start_angle := _camera.get_camera_zone_angle(_ball_start, _hole_pos)
     _camera.start_begin_animation(_begin_cam_pos, _hole_pos, _ball_start, start_angle)
@@ -210,7 +212,7 @@ func load_level(path: String) -> void:
         _net.join_room("hole_%d" % _level_index)
 
 func _physics_process(delta: float) -> void:
-    if _physics == null or _paused:
+    if _physics == null:
         return
     match _state:
         State.BEGIN:
@@ -222,10 +224,12 @@ func _physics_process(delta: float) -> void:
         State.WAITING:
             _physics.update(delta)
             _camera.update_follow(_physics.ball_draw_pos, _hole_pos, delta)
-            _handle_waiting_input(delta)
+            if not _menu_open:
+                _handle_waiting_input(delta)
         State.AIMING:
             _physics.update(delta)
-            _update_aiming(delta)
+            if not _menu_open:
+                _update_aiming(delta)
         State.WATCHING:
             _physics.update(delta)
             _camera.update_follow(_physics.ball_draw_pos, _hole_pos, delta)
@@ -541,9 +545,9 @@ func _build_ui() -> void:
     if lb != null and not lb.updated.is_connected(_refresh_board):
         lb.updated.connect(_refresh_board)
 
-# --- Pause menu --------------------------------------------------------------
+# --- In-game menu ------------------------------------------------------------
 
-## Restart the current hole (wired to the pause menu's "Restart Hole" button).
+## Restart the current hole (wired to the in-game menu's "Restart Hole" button).
 func _restart_hole() -> void:
     load_level_index(_level_index)
 
@@ -552,11 +556,21 @@ func _on_volume_changed(value: float) -> void:
     AudioServer.set_bus_volume_db(bus, linear_to_db(maxf(value, 0.0001)))
     AudioServer.set_bus_mute(bus, value <= 0.0)
 
-func _toggle_pause() -> void:
-    _set_paused(not _paused)
+func _toggle_menu() -> void:
+    _set_menu_open(not _menu_open)
 
-func _set_paused(value: bool) -> void:
-    _paused = value
+# Backwards-compatible wrapper for any stale scene signal connections.
+func _toggle_pause() -> void:
+    _toggle_menu()
+
+func _set_menu_open(value: bool) -> void:
+    _menu_open = value
+    _panning = false
+    if value and _state == State.AIMING:
+        _aim_line.clear()
+        _overlay.active = false
+        _overlay.queue_redraw()
+        _state = State.WAITING
     if _pause_menu != null:
         _pause_menu.visible = value
 

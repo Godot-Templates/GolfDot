@@ -25,18 +25,18 @@ const MAX_ENTRIES := 10
 ## Ranked entries for a hole as an Array of { "name": String, "strokes": int },
 ## sorted ascending by strokes (fewer is better). Empty if nothing recorded.
 static func get_hole_scores(index: int) -> Array:
-	return _load_board(PER_HOLE_SECTION, str(index))
+    return _load_board(PER_HOLE_SECTION, str(index))
 
 ## Submit a named result for a single hole. Keeps only the top MAX_ENTRIES.
 ## Returns the entry's rank (1-based) on the board, or -1 if it didn't place.
 static func submit_hole_score(index: int, player_name: String, strokes: int) -> int:
-	return _submit(PER_HOLE_SECTION, str(index), player_name, strokes)
+    return _submit(PER_HOLE_SECTION, str(index), player_name, strokes)
 
 ## --- Full-course (total) board -------------------------------------------
 
 ## Ranked entries for the full 18/20-hole course total, sorted ascending.
 static func get_course_scores() -> Array:
-	return _load_board(TOTAL_SECTION, TOTAL_KEY)
+    return _load_board(TOTAL_SECTION, TOTAL_KEY)
 
 ## Submit a named full-course total. Returns 1-based rank, or -1 if it didn't place.
 static func submit_course_score(player_name: String, total_strokes: int) -> int:

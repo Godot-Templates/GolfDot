@@ -16,12 +16,17 @@ extends Node
 
 const GHOST_SCRIPT := "res://scripts/golf_ghost_ball.gd"
 
+signal connection_problem(message: String)
+
 var _players: Node3D
 var _spawner: MultiplayerSpawner
 var _host: int = 0
 var _room: String = ""
 var _local_name: String = "Player"
 var _local_pos: Vector3 = Vector3.ZERO
+var _last_join_url: String = ""
+var _last_join_room: String = ""
+var _last_join_started_msec: int = 0
 
 func _ready() -> void:
     _players = Node3D.new()
@@ -85,38 +90,68 @@ func join_room(room_id: String) -> void:
     var user_id: String = ProjectSettings.get_setting("ziva/multiplayer/user_id", "")
     var game_id: String = ProjectSettings.get_setting("ziva/multiplayer/game_id", "")
     var relay_url: String = ProjectSettings.get_setting("ziva/multiplayer/relay_url", "")
-    # Fail loud rather than silently connect nowhere.
+    # Fail loudly enough to debug, but don't break local/offline play.
     if user_id.is_empty() or game_id.is_empty() or relay_url.is_empty():
-        push_error("GolfNet: Ziva multiplayer settings missing — enable multiplayer in Settings → Ziva Cloud.")
+        _report_problem("Ziva multiplayer settings missing. Enable multiplayer in Settings → Ziva Cloud to use online ghost balls.")
         return
 
     var url: String = "%s/r/%s?u=%s&g=%s&v=1" % [relay_url, room_id, user_id, game_id]
-    var peer := WebSocketMultiplayerPeer.new()
+    _last_join_url = url
+    _last_join_room = room_id
+    _last_join_started_msec = Time.get_ticks_msec()
+
+    var peer: WebSocketMultiplayerPeer = WebSocketMultiplayerPeer.new()
     var err: int = peer.create_client(url)
     if err != OK:
-        push_error("GolfNet: create_client failed (%d) for %s" % [err, url])
+        _report_problem("create_client failed before opening the WebSocket (error %d). URL=%s" % [err, _redacted_url()])
         return
     multiplayer.multiplayer_peer = peer
-    print("GolfNet: joining room '%s'" % room_id)
+    print("GolfNet: joining room '%s' via %s" % [room_id, relay_url])
 
 func _is_live() -> bool:
     var p: MultiplayerPeer = multiplayer.multiplayer_peer
     return p != null and not (p is OfflineMultiplayerPeer)
 
 func _leave() -> void:
-    for c in _players.get_children():
+    for c: Node in _players.get_children():
         c.queue_free()
     _host = 0
     if _is_live():
         multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 
+func _redacted_url() -> String:
+    if _last_join_url.is_empty():
+        return "<none>"
+    var safe_url: String = _last_join_url
+    var user_id: String = ProjectSettings.get_setting("ziva/multiplayer/user_id", "")
+    if not user_id.is_empty():
+        safe_url = safe_url.replace("u=%s" % user_id, "u=<redacted>")
+    return safe_url
+
+func _relay_failure_hint() -> String:
+    var relay_url: String = ProjectSettings.get_setting("ziva/multiplayer/relay_url", "")
+    var has_user_id: bool = not String(ProjectSettings.get_setting("ziva/multiplayer/user_id", "")).is_empty()
+    var has_game_id: bool = not String(ProjectSettings.get_setting("ziva/multiplayer/game_id", "")).is_empty()
+    var has_relay_url: bool = not relay_url.is_empty()
+    var hints: PackedStringArray = []
+    if not has_user_id or not has_game_id or not has_relay_url:
+        hints.append("missing ziva/multiplayer project settings; enable multiplayer in Settings → Ziva Cloud")
+    hints.append("Ziva Cloud multiplayer may be disabled for this project/account, or the account may be over quota")
+    hints.append("relay/network may be unreachable: %s" % (relay_url if has_relay_url else "<missing>"))
+    return "; ".join(hints)
+
+func _report_problem(message: String) -> void:
+    var full_message: String = "GolfNet: %s" % message
+    push_warning(full_message)
+    connection_problem.emit(full_message)
+
 # --- Host election -----------------------------------------------------------
 
-func _real_peers() -> Array:
-    var out: Array = []
-    for p in multiplayer.get_peers():
-        if int(p) > 1:
-            out.append(int(p))
+func _real_peers() -> Array[int]:
+    var out: Array[int] = []
+    for p: int in multiplayer.get_peers():
+        if p > 1:
+            out.append(p)
     return out
 
 # Host = lowest real peer id. include_self_floor lets the caller exclude `me` from
@@ -124,7 +159,7 @@ func _real_peers() -> Array:
 # lower peers the relay is about to deliver (claiming self there would make this
 # peer reject the real host's spawns until it caught up).
 func _refresh_host(include_self_floor: bool = true) -> void:
-    var cands: Array = _real_peers()
+    var cands: Array[int] = _real_peers()
     var me: int = multiplayer.get_unique_id()
     if include_self_floor and me > 1:
         cands.append(me)
@@ -178,25 +213,27 @@ func _on_peer_gone(id: int) -> void:
         _host_spawn_all()
 
 func _on_conn_failed() -> void:
-    push_error("GolfNet: connection to relay failed")
+    var elapsed_msec: int = max(0, Time.get_ticks_msec() - _last_join_started_msec)
+    _report_problem("connection to relay failed after %d ms. room='%s', url=%s. Likely causes: %s" % [elapsed_msec, _last_join_room, _redacted_url(), _relay_failure_hint()])
     _leave()
 
 func _on_server_gone() -> void:
+    _report_problem("relay disconnected while in room '%s'. url=%s" % [_last_join_room, _redacted_url()])
     _leave()
 
 # --- Spawn function (runs on every peer to build the node locally) ------------
 
 func _spawn_player(data: Variant) -> Node:
     var id: int = int(data)
-    var p := Node3D.new()
+    var p: Node3D = Node3D.new()
     p.name = "player_%d" % id
     p.set_script(load(GHOST_SCRIPT))
 
-    var sync := MultiplayerSynchronizer.new()
+    var sync: MultiplayerSynchronizer = MultiplayerSynchronizer.new()
     sync.name = "Sync"
     sync.replication_interval = 0.0  # push every network frame for lowest lag
 
-    var cfg := SceneReplicationConfig.new()
+    var cfg: SceneReplicationConfig = SceneReplicationConfig.new()
     cfg.add_property(NodePath(".:net_pos"))
     cfg.property_set_spawn(NodePath(".:net_pos"), true)
     cfg.property_set_replication_mode(NodePath(".:net_pos"), SceneReplicationConfig.REPLICATION_MODE_ALWAYS)

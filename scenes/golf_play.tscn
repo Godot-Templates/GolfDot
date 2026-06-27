@@ -109,7 +109,7 @@ theme_override_constants/separation = 14
 [node name="Title" type="Label" parent="UI/PauseMenu/Center/Panel/VBox" unique_id=1546870482]
 layout_mode = 2
 theme_override_font_sizes/font_size = 30
-text = "Paused"
+text = "Menu"
 horizontal_alignment = 1
 
 [node name="VolRow" type="HBoxContainer" parent="UI/PauseMenu/Center/Panel/VBox" unique_id=1136138299]
@@ -129,7 +129,7 @@ step = 0.01
 
 [node name="ResumeButton" type="Button" parent="UI/PauseMenu/Center/Panel/VBox" unique_id=1291806974]
 layout_mode = 2
-text = "Resume"
+text = "Close"
 
 [node name="RestartButton" type="Button" parent="UI/PauseMenu/Center/Panel/VBox" unique_id=1596047103]
 layout_mode = 2
@@ -195,9 +195,9 @@ layout_mode = 2
 text = "Close"
 
 [connection signal="pressed" from="UI/HUD/HighscoresButton" to="." method="_toggle_board"]
-[connection signal="pressed" from="UI/MenuButton" to="." method="_toggle_pause"]
+[connection signal="pressed" from="UI/MenuButton" to="." method="_toggle_menu"]
 [connection signal="value_changed" from="UI/PauseMenu/Center/Panel/VBox/VolRow/VolumeSlider" to="." method="_on_volume_changed"]
-[connection signal="pressed" from="UI/PauseMenu/Center/Panel/VBox/ResumeButton" to="." method="_toggle_pause"]
+[connection signal="pressed" from="UI/PauseMenu/Center/Panel/VBox/ResumeButton" to="." method="_toggle_menu"]
 [connection signal="pressed" from="UI/PauseMenu/Center/Panel/VBox/RestartButton" to="." method="_restart_hole"]
 [connection signal="pressed" from="UI/PauseMenu/Center/Panel/VBox/LevelSelectButton" to="." method="_go_to_menu"]
 [connection signal="pressed" from="UI/BoardOverlay/Center/Panel/VBox/CloseButton" to="." method="_toggle_board"]
