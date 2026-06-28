@@ -139,7 +139,7 @@ text = "Close"
 
 [node name="RestartButton" type="Button" parent="UI/PauseMenu/Center/Panel/VBox" unique_id=1596047103]
 layout_mode = 2
-text = "Restart Hole"
+text = "Restart Hole (R)"
 
 [node name="LevelSelectButton" type="Button" parent="UI/PauseMenu/Center/Panel/VBox" unique_id=284139920]
 layout_mode = 2

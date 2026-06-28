@@ -7,7 +7,8 @@ extends Node3D
 ##
 ## Controls:
 ##   Mouse: press on the ball's ring and drag back (slingshot) to aim, release to hit.
-##   Keyboard fallback: Left/Right rotate camera, Up/Down power, Space hit, R reset.
+##   Keyboard fallback: Left/Right rotate camera, Up/Down power, Space hit,
+##   R restart hole (skips the fly-in cutscene).
 
 @export var level_path: String = "res://assets/levels/level-1.level"
 
@@ -127,6 +128,9 @@ func _unhandled_input(event: InputEvent) -> void:
             KEY_P, KEY_BRACKETLEFT:
                 if not _menu_open:
                     load_level_index(_level_index - 1)
+            KEY_R:
+                if not _menu_open:
+                    _restart_hole()
             KEY_ESCAPE, KEY_M:
                 _toggle_menu()
 
@@ -291,8 +295,6 @@ func _handle_waiting_input(delta: float) -> void:
         _aim.power = _kb_power
         _state = State.AIMING
         return
-    if Input.is_physical_key_pressed(KEY_R):
-        _reset_ball()
 
     _update_aim_circle_radius()
     var mouse := get_viewport().get_mouse_position()
@@ -659,9 +661,14 @@ func _scorecard_icon_box(fill: Color, border: Color, border_width: int) -> Style
 
 # --- In-game menu ------------------------------------------------------------
 
-## Restart the current hole (wired to the in-game menu's "Restart Hole" button).
+## Restart the current hole and skip the begin fly-in cutscene. Wired to the
+## in-game menu's "Restart Hole (R)" button and the R key.
 func _restart_hole() -> void:
     load_level_index(_level_index)
+    if _camera != null:
+        _camera.finish_begin_animation()
+    _state = State.WAITING
+    _camera.update_follow(_physics.ball_draw_pos, _hole_pos, 0.0)
 
 func _on_volume_changed(value: float) -> void:
     var bus: int = AudioServer.get_bus_index("Master")

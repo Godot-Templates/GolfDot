@@ -128,6 +128,14 @@ func update_begin_animation(dt: float) -> bool:
     _apply()
     return done
 
+## Instantly complete the begin fly-in, snapping to the final follow view. Used
+## when the player skips the cutscene (restart-hole / R key).
+func finish_begin_animation() -> void:
+    _begin_t = BEGIN_LENGTH0 + BEGIN_LENGTH1
+    _cam_pos = _begin_pos1
+    _cam_dir = _begin_dir1
+    _apply()
+
 # --- Celebration (game.c:800) -----------------------------------------------
 
 func start_celebration(ball_draw_pos: Vector3) -> void:
