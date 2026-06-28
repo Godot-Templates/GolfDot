@@ -49,9 +49,7 @@ func _ready() -> void:
     _mesh.name = "Mesh"
     _mesh.mesh = BALL_MESH
     _mesh.transform = Transform3D(Basis().scaled(Vector3.ONE * BALL_RADIUS), Vector3.ZERO)
-    var mat: StandardMaterial3D = StandardMaterial3D.new()
-    mat.albedo_color = SkinShop.color_for_skin(skin_id)
-    _mesh.material_override = mat
+    _mesh.material_override = SkinShop.ball_material_for_skin(skin_id)
     add_child(_mesh)
 
     _label = GolfPlay.make_name_plate(pname)
@@ -145,8 +143,4 @@ func _set_pname(value: String) -> void:
 func _apply_skin_color() -> void:
     if _mesh == null:
         return
-    var mat: StandardMaterial3D = _mesh.material_override as StandardMaterial3D
-    if mat == null:
-        mat = StandardMaterial3D.new()
-        _mesh.material_override = mat
-    mat.albedo_color = SkinShop.color_for_skin(skin_id)
+    _mesh.material_override = SkinShop.ball_material_for_skin(skin_id)

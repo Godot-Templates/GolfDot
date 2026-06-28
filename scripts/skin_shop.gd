@@ -4,17 +4,57 @@ extends Control
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const TOTAL_BEST_GOLD_REQUIREMENT := 60
+const HOLE_IN_ONE_SKIN_HOLE := 5
+const HOLE_IN_ONE_SKIN_STROKES := 1
+const GOLD_STRIPE_SHADER_CODE := """
+shader_type spatial;
+
+varying vec3 local_normal;
+
+void vertex() {
+    local_normal = NORMAL;
+}
+
+void fragment() {
+    vec3 gold = vec3(1.0, 0.78, 0.12);
+    vec3 black = vec3(0.015, 0.012, 0.01);
+    float stripe = step(abs(normalize(local_normal).y), 0.34);
+    ALBEDO = mix(gold, black, stripe);
+    ROUGHNESS = 0.34;
+    METALLIC = 0.08;
+}
+"""
 
 const SKINS: Array[Dictionary] = [
-    {"id": "white", "name": "White", "color": Color.WHITE, "description": "Default ball", "required_levels": 0, "requires_all": false, "requires_gold_total": false},
-    {"id": "pink", "name": "Pink", "color": Color(1.0, 0.28, 0.72), "description": "Beat 5 holes", "required_levels": 5, "requires_all": false, "requires_gold_total": false},
-    {"id": "orange", "name": "Orange", "color": Color(1.0, 0.48, 0.1), "description": "Beat 10 holes", "required_levels": 10, "requires_all": false, "requires_gold_total": false},
-    {"id": "brown", "name": "Brown", "color": Color(0.45, 0.25, 0.1), "description": "Beat all 20 holes", "required_levels": 20, "requires_all": true, "requires_gold_total": false},
-    {"id": "gold", "name": "Gold", "color": Color(1.0, 0.78, 0.12), "description": "Beat all 20 holes with total best par 60", "required_levels": 20, "requires_all": true, "requires_gold_total": true},
+    {"id": "white", "name": "White", "color": Color.WHITE, "description": "Default ball", "required_levels": 0, "requires_all": false, "requires_gold_total": false, "requires_hole_in_one": false},
+    {"id": "pink", "name": "Pink", "color": Color(1.0, 0.28, 0.72), "description": "Beat 5 holes", "required_levels": 5, "requires_all": false, "requires_gold_total": false, "requires_hole_in_one": false},
+    {"id": "orange", "name": "Orange", "color": Color(1.0, 0.48, 0.1), "description": "Beat 10 holes", "required_levels": 10, "requires_all": false, "requires_gold_total": false, "requires_hole_in_one": false},
+    {"id": "brown", "name": "Brown", "color": Color(0.45, 0.25, 0.1), "description": "Beat all 20 holes", "required_levels": 20, "requires_all": true, "requires_gold_total": false, "requires_hole_in_one": false},
+    {"id": "gold", "name": "Gold", "color": Color(1.0, 0.78, 0.12), "description": "Beat all 20 holes with total best par 60", "required_levels": 20, "requires_all": true, "requires_gold_total": true, "requires_hole_in_one": false},
+    {"id": "gold_black_stripe", "name": "Gold + Black Stripe", "color": Color(1.0, 0.78, 0.12), "description": "Beat Hole 5 in one shot", "required_levels": 0, "requires_all": false, "requires_gold_total": false, "requires_hole_in_one": true, "black_stripe": true},
 ]
 
 var _status_label: Label
 var _list: VBoxContainer
+
+class SkinSwatch:
+    extends Control
+
+    var base_color: Color = Color.WHITE
+    var has_black_stripe: bool = false
+
+    func _init(p_base_color: Color, p_has_black_stripe: bool) -> void:
+        base_color = p_base_color
+        has_black_stripe = p_has_black_stripe
+        custom_minimum_size = Vector2(36, 36)
+        mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+    func _draw() -> void:
+        draw_rect(Rect2(Vector2.ZERO, size), base_color)
+        if has_black_stripe:
+            var stripe_height: float = size.y * 0.36
+            var stripe_y: float = (size.y - stripe_height) * 0.5
+            draw_rect(Rect2(Vector2(0.0, stripe_y), Vector2(size.x, stripe_height)), Color.BLACK)
 
 static func color_for_skin(skin_id: String) -> Color:
     var skin: Dictionary = _skin_data(skin_id)
@@ -23,6 +63,18 @@ static func color_for_skin(skin_id: String) -> Color:
 static func display_name_for_skin(skin_id: String) -> String:
     var skin: Dictionary = _skin_data(skin_id)
     return String(skin.get("name", "White"))
+
+static func ball_material_for_skin(skin_id: String) -> Material:
+    var skin: Dictionary = _skin_data(skin_id)
+    if bool(skin.get("black_stripe", false)):
+        var shader: Shader = Shader.new()
+        shader.code = GOLD_STRIPE_SHADER_CODE
+        var shader_mat: ShaderMaterial = ShaderMaterial.new()
+        shader_mat.shader = shader
+        return shader_mat
+    var mat: StandardMaterial3D = StandardMaterial3D.new()
+    mat.albedo_color = skin.get("color", Color.WHITE)
+    return mat
 
 static func is_skin_unlocked(skin_id: String) -> bool:
     return _is_unlocked(_skin_data(skin_id))
@@ -52,6 +104,10 @@ static func _is_unlocked(skin: Dictionary) -> bool:
     if bool(skin.get("requires_gold_total", false)):
         var total_best: int = GolfScores.get_total_best()
         if total_best < 0 or total_best > TOTAL_BEST_GOLD_REQUIREMENT:
+            return false
+    if bool(skin.get("requires_hole_in_one", false)):
+        var hole_best: int = GolfScores.get_best(HOLE_IN_ONE_SKIN_HOLE)
+        if hole_best < 0 or hole_best > HOLE_IN_ONE_SKIN_STROKES:
             return false
     return true
 
@@ -125,9 +181,7 @@ func _make_skin_row(skin: Dictionary, selected: String) -> Control:
     row.add_theme_constant_override("separation", 10)
     row_panel.add_child(row)
 
-    var swatch: ColorRect = ColorRect.new()
-    swatch.color = skin.get("color", Color.WHITE)
-    swatch.custom_minimum_size = Vector2(36, 36)
+    var swatch: SkinSwatch = SkinSwatch.new(skin.get("color", Color.WHITE), bool(skin.get("black_stripe", false)))
     row.add_child(swatch)
 
     var label: Label = Label.new()
@@ -160,6 +214,8 @@ func _skin_row_box(is_selected: bool) -> StyleBoxFlat:
 func _unlock_text(skin: Dictionary, unlocked: bool) -> String:
     if unlocked:
         return String(skin.get("description", "Unlocked"))
+    if bool(skin.get("requires_hole_in_one", false)):
+        return "Locked — beat Hole %d in one shot" % HOLE_IN_ONE_SKIN_HOLE
     if bool(skin.get("requires_gold_total", false)):
         return "Locked — beat all 20 holes with total best 60 or better"
     if bool(skin.get("requires_all", false)):

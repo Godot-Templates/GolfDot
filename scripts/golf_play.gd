@@ -514,9 +514,8 @@ func _build_ball() -> void:
     _ball_mi = MeshInstance3D.new()
     _ball_mi.name = "Ball"
     _ball_mi.mesh = BALL_MESH
-    var mat := StandardMaterial3D.new()
-    mat.albedo_color = SkinShop.color_for_skin(SkinShop.normalize_skin(PlayerProfile.get_skin()))
-    _ball_mi.material_override = mat
+    var skin_id: String = SkinShop.normalize_skin(PlayerProfile.get_skin())
+    _ball_mi.material_override = SkinShop.ball_material_for_skin(skin_id)
     add_child(_ball_mi)
 
 ## Build the floating nameplate that hovers above the local player's ball.
