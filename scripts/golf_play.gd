@@ -92,6 +92,7 @@ func _ready() -> void:
     _net.name = "Net"
     add_child(_net)
     _net.set_local_name(PlayerProfile.get_player_name())
+    _net.set_local_skin(SkinShop.normalize_skin(PlayerProfile.get_skin()))
     _net.status_changed.connect(_update_online_status)
     _update_online_status(_net.status_text())
     _level_index = _index_from_path(level_path)
@@ -593,6 +594,8 @@ func _apply_menu_theme() -> void:
     _style_scorecard_icon_button()
 
 func _style_scorecard_icon_button() -> void:
+    _highscores_button.text = "🏆"
+    _highscores_button.add_theme_font_override("font", MenuThemeBuilder.EMOJI_FONT)
     _highscores_button.add_theme_stylebox_override("normal", _scorecard_icon_box(Color(0, 0, 0, 0.0), Color(0.86, 0.93, 0.80, 0.18), 0))
     _highscores_button.add_theme_stylebox_override("hover", _scorecard_icon_box(Color(0.95, 0.86, 0.35, 0.14), Color(0.95, 0.86, 0.35, 0.55), 1))
     _highscores_button.add_theme_stylebox_override("pressed", _scorecard_icon_box(Color(0.95, 0.86, 0.35, 0.24), Color(0.95, 0.86, 0.35, 0.75), 1))

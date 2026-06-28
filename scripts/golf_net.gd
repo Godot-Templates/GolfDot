@@ -24,6 +24,7 @@ var _spawner: MultiplayerSpawner
 var _host: int = 0
 var _room: String = ""
 var _local_name: String = "Player"
+var _local_skin: String = PlayerProfile.DEFAULT_SKIN
 var _local_pos: Vector3 = Vector3.ZERO
 var _last_join_url: String = ""
 var _last_join_room: String = ""
@@ -50,6 +51,16 @@ func _ready() -> void:
 ## Set the display name carried onto this peer's ghost ball.
 func set_local_name(value: String) -> void:
     _local_name = value if value.strip_edges() != "" else "Player"
+    var node: Node = _local_node()
+    if node != null:
+        node.set("pname", _local_name)
+
+## Set the selected shop skin carried onto this peer's ghost ball.
+func set_local_skin(value: String) -> void:
+    _local_skin = value if value.strip_edges() != "" else PlayerProfile.DEFAULT_SKIN
+    var node: Node = _local_node()
+    if node != null:
+        node.set("skin_id", _local_skin)
 
 ## Feed the local ball's world position each frame; pushed onto our own player
 ## node so the synchronizer replicates it (as the authoritative/at-rest position)
@@ -60,6 +71,7 @@ func update_local_pos(world_pos: Vector3) -> void:
     if node != null:
         node.set("net_pos", world_pos)
         node.set("pname", _local_name)
+        node.set("skin_id", _local_skin)
 
 ## Returns our own player node (the one the local peer has authority over), or null.
 func _local_node() -> Node:
@@ -272,6 +284,9 @@ func _spawn_player(data: Variant) -> Node:
     cfg.add_property(NodePath(".:pname"))
     cfg.property_set_spawn(NodePath(".:pname"), true)
     cfg.property_set_replication_mode(NodePath(".:pname"), SceneReplicationConfig.REPLICATION_MODE_ON_CHANGE)
+    cfg.add_property(NodePath(".:skin_id"))
+    cfg.property_set_spawn(NodePath(".:skin_id"), true)
+    cfg.property_set_replication_mode(NodePath(".:skin_id"), SceneReplicationConfig.REPLICATION_MODE_ON_CHANGE)
     sync.replication_config = cfg
     sync.root_path = NodePath("..")
     p.add_child(sync)

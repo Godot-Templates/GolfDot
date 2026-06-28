@@ -22,6 +22,12 @@ const NAME_PLATE_HEIGHT := 0.5
 # GolfPhysics sim (see shot()), so remote balls move with real physics.
 var net_pos: Vector3 = Vector3.ZERO
 var pname: String = "" : set = _set_pname
+var skin_id: String = PlayerProfile.DEFAULT_SKIN:
+    set(value):
+        skin_id = value.strip_edges().to_lower()
+        if skin_id == "":
+            skin_id = PlayerProfile.DEFAULT_SKIN
+        _apply_skin_color()
 
 var _label: Label3D
 var _mesh: MeshInstance3D
@@ -43,8 +49,8 @@ func _ready() -> void:
     _mesh.name = "Mesh"
     _mesh.mesh = BALL_MESH
     _mesh.transform = Transform3D(Basis().scaled(Vector3.ONE * BALL_RADIUS), Vector3.ZERO)
-    var mat := StandardMaterial3D.new()
-    mat.albedo_color = _color_for_id()
+    var mat: StandardMaterial3D = StandardMaterial3D.new()
+    mat.albedo_color = SkinShop.color_for_skin(skin_id)
     _mesh.material_override = mat
     add_child(_mesh)
 
@@ -136,8 +142,11 @@ func _set_pname(value: String) -> void:
     if _label != null:
         _label.text = value if value.strip_edges() != "" else "Player"
 
-## Give each remote player a distinct, stable color so balls are tellable apart.
-func _color_for_id() -> Color:
-    var id: int = int(str(name).trim_prefix("player_"))
-    var hue: float = fposmod(float(id) * 0.61803398875, 1.0)
-    return Color.from_hsv(hue, 0.7, 1.0)
+func _apply_skin_color() -> void:
+    if _mesh == null:
+        return
+    var mat: StandardMaterial3D = _mesh.material_override as StandardMaterial3D
+    if mat == null:
+        mat = StandardMaterial3D.new()
+        _mesh.material_override = mat
+    mat.albedo_color = SkinShop.color_for_skin(skin_id)

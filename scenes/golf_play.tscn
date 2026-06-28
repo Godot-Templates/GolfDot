@@ -58,7 +58,7 @@ theme_override_font_sizes/font_size = 16
 custom_minimum_size = Vector2(38, 30)
 layout_mode = 2
 tooltip_text = "Click for highscores"
-text = "▦"
+text = "🏆"
 
 [node name="StatusLabel" type="Label" parent="UI/HUD" unique_id=2049855520]
 layout_mode = 2
