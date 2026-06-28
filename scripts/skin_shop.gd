@@ -93,14 +93,6 @@ func _build_ui() -> void:
     _list.add_theme_constant_override("separation", 8)
     vbox.add_child(_list)
 
-    var hint: Label = Label.new()
-    hint.text = "Unlocks are based on your local best scores. Multiplayer color sync will work after Ziva Cloud multiplayer is enabled for this project."
-    hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    hint.add_theme_font_size_override("font_size", 12)
-    hint.add_theme_color_override("font_color", Color(0.72, 0.82, 0.72))
-    vbox.add_child(hint)
-
     var back_btn: Button = Button.new()
     back_btn.text = "Back"
     back_btn.custom_minimum_size = Vector2(0, 44)
@@ -124,8 +116,16 @@ func _refresh() -> void:
         _list.add_child(_make_skin_row(skin, selected))
 
 func _make_skin_row(skin: Dictionary, selected: String) -> Control:
+    var id: String = String(skin.get("id", "white"))
+    var unlocked: bool = _is_unlocked(skin)
+    var is_selected: bool = id == selected
+
+    var row_panel: PanelContainer = PanelContainer.new()
+    row_panel.add_theme_stylebox_override("panel", _skin_row_box(is_selected))
+
     var row: HBoxContainer = HBoxContainer.new()
     row.add_theme_constant_override("separation", 10)
+    row_panel.add_child(row)
 
     var swatch: ColorRect = ColorRect.new()
     swatch.color = skin.get("color", Color.WHITE)
@@ -133,22 +133,31 @@ func _make_skin_row(skin: Dictionary, selected: String) -> Control:
     row.add_child(swatch)
 
     var label: Label = Label.new()
-    var id: String = String(skin.get("id", "white"))
-    var unlocked: bool = _is_unlocked(skin)
-    var suffix: String = "  ✓ Selected" if id == selected else ""
-    label.text = "%s%s\n%s" % [String(skin.get("name", "White")), suffix, _unlock_text(skin, unlocked)]
+    label.text = "%s\n%s" % [String(skin.get("name", "White")), _unlock_text(skin, unlocked)]
     label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     row.add_child(label)
 
     var btn: Button = Button.new()
     btn.custom_minimum_size = Vector2(108, 38)
-    btn.text = "Selected" if id == selected else ("Use" if unlocked else "Locked")
-    btn.disabled = (not unlocked) or id == selected
-    if unlocked and id != selected:
+    btn.text = "Selected" if is_selected else ("Use" if unlocked else "Locked")
+    btn.disabled = (not unlocked) or is_selected
+    if unlocked and not is_selected:
         btn.pressed.connect(_on_skin_pressed.bind(id))
     row.add_child(btn)
 
-    return row
+    return row_panel
+
+func _skin_row_box(is_selected: bool) -> StyleBoxFlat:
+    var sb: StyleBoxFlat = StyleBoxFlat.new()
+    sb.bg_color = Color(0.95, 0.86, 0.35, 0.16) if is_selected else Color(0, 0, 0, 0)
+    sb.border_color = Color(0.95, 0.86, 0.35, 0.62) if is_selected else Color(0.86, 0.93, 0.80, 0.08)
+    sb.set_border_width_all(1 if is_selected else 0)
+    sb.set_corner_radius_all(10)
+    sb.content_margin_left = 10
+    sb.content_margin_right = 10
+    sb.content_margin_top = 8
+    sb.content_margin_bottom = 8
+    return sb
 
 func _unlock_text(skin: Dictionary, unlocked: bool) -> String:
     if unlocked:
