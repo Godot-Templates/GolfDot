@@ -14,6 +14,10 @@ var _overall_slot: VBoxContainer
 var _status: Label
 var _play_button: Button
 var _selected_level: int = 0 # 0 = overall, 1..20 = hole board
+var _selector_buttons: Dictionary = {} # level (0=overall) -> Button
+
+# Flag-yellow accent used across menus for selection/focus (see MenuThemeBuilder.COL_FOCUS).
+const SEL_ACCENT := Color(0.95, 0.86, 0.35)
 
 func _ready() -> void:
     var backdrop: Node = get_node_or_null("/root/MenuBackdrop")
@@ -167,9 +171,11 @@ func _refresh_selector() -> void:
         child.queue_free()
     for child: Node in _overall_slot.get_children():
         child.queue_free()
+    _selector_buttons.clear()
     for i: int in range(1, LEVEL_COUNT + 1):
         _selector_list.add_child(_make_hole_button(i))
     _overall_slot.add_child(_make_overall_button())
+    _update_selection_highlight()
 
 func _make_hole_button(idx: int) -> Button:
     var your_best: int = GolfScores.get_best(idx)
@@ -177,6 +183,7 @@ func _make_hole_button(idx: int) -> Button:
     var global_text: String = _global_best_text(idx)
     var btn: Button = _make_selector_button("Hole %02d" % idx, "Par %d   ·   Best: %s" % [GolfScores.get_par(idx), global_text], your_text)
     btn.pressed.connect(_select_hole.bind(idx))
+    _selector_buttons[idx] = btn
     return btn
 
 func _make_overall_button() -> Button:
@@ -185,6 +192,7 @@ func _make_overall_button() -> Button:
     var global_text: String = _global_best_text(0)
     var btn: Button = _make_selector_button("Overall", "All 20 holes   ·   Best: %s" % global_text, your_text)
     btn.pressed.connect(_select_overall)
+    _selector_buttons[0] = btn
     return btn
 
 func _global_best_text(level: int) -> String:
@@ -246,11 +254,43 @@ func _select_hole(level: int) -> void:
     _selected_level = level
     _refresh_board()
     _update_play_button()
+    _update_selection_highlight()
 
 func _select_overall() -> void:
     _selected_level = 0
     _refresh_board()
     _update_play_button()
+    _update_selection_highlight()
+
+## Highlight the currently selected selector button with the shared flag-yellow
+## accent, matching the Skin Shop's "Selected" treatment.
+func _update_selection_highlight() -> void:
+    for level: int in _selector_buttons:
+        var btn: Button = _selector_buttons[level]
+        if not is_instance_valid(btn):
+            continue
+        _apply_selector_state(btn, level == _selected_level)
+
+func _apply_selector_state(btn: Button, selected: bool) -> void:
+    if selected:
+        btn.add_theme_stylebox_override("normal", _selector_box(0.18, 2))
+        btn.add_theme_stylebox_override("hover", _selector_box(0.24, 2))
+        btn.add_theme_stylebox_override("pressed", _selector_box(0.16, 2))
+    else:
+        btn.remove_theme_stylebox_override("normal")
+        btn.remove_theme_stylebox_override("hover")
+        btn.remove_theme_stylebox_override("pressed")
+
+func _selector_box(fill_alpha: float, border_w: int) -> StyleBoxFlat:
+    var sb: StyleBoxFlat = StyleBoxFlat.new()
+    sb.bg_color = Color(SEL_ACCENT.r, SEL_ACCENT.g, SEL_ACCENT.b, fill_alpha)
+    sb.border_color = Color(SEL_ACCENT.r, SEL_ACCENT.g, SEL_ACCENT.b, 0.7)
+    sb.set_border_width_all(border_w)
+    sb.set_corner_radius_all(10)
+    sb.shadow_color = Color(0, 0, 0, 0.25)
+    sb.shadow_size = 4
+    sb.shadow_offset = Vector2(0, 2)
+    return sb
 
 func _update_play_button() -> void:
     if _play_button == null:

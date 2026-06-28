@@ -44,6 +44,7 @@ var _presence: Node = null
 @onready var _volume_slider: HSlider = $UI/PauseMenu/Center/Panel/VBox/VolRow/VolumeSlider
 
 const MENU_SCENE := "res://scenes/level_select.tscn"
+const MAIN_MENU_SCENE := "res://scenes/main_menu.tscn"
 
 enum State { BEGIN, WAITING, AIMING, WATCHING, CELEBRATION, FINISHED }
 
@@ -719,6 +720,10 @@ func _collect_camera_zones(node: Node) -> void:
 func _go_to_menu() -> void:
     get_tree().change_scene_to_file(MENU_SCENE)
 
+## Return to the main menu.
+func _go_to_main_menu() -> void:
+    get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+
 ## Show the per-hole completion panel after sinking the ball, letting the player
 ## choose to retry the same hole (R) or advance to the next hole (N) instead of
 ## auto-advancing.
@@ -755,6 +760,11 @@ func _show_hole_complete() -> void:
     retry.text = "Retry (R)"
     retry.pressed.connect(_restart_hole)
     vbox.add_child(retry)
+
+    var menu_btn: Button = Button.new()
+    menu_btn.text = "Main Menu"
+    menu_btn.pressed.connect(_go_to_main_menu)
+    vbox.add_child(menu_btn)
 
     _hole_complete_panel = panel
     _ui_layer.add_child(panel)
