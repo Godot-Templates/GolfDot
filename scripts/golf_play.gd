@@ -36,6 +36,8 @@ var _is_new_best: bool = false
 var _total_strokes: int = 0
 var _total_par: int = 0
 var _summary_shown: bool = false
+var _hole_complete_shown: bool = false
+var _hole_complete_panel: Control = null
 var _menu_open: bool = false
 var _presence: Node = null
 @onready var _pause_menu: Control = $UI/PauseMenu
@@ -221,6 +223,10 @@ func load_level(path: String) -> void:
     _scored = false
     _is_new_best = false
     _summary_shown = false
+    _hole_complete_shown = false
+    if _hole_complete_panel != null:
+        _hole_complete_panel.queue_free()
+        _hole_complete_panel = null
     _set_menu_open(false)
     _state = State.BEGIN
     var start_angle := _camera.get_camera_zone_angle(_ball_start, _hole_pos)
@@ -265,11 +271,9 @@ func _physics_process(delta: float) -> void:
                 if not _summary_shown:
                     _show_round_summary()
             else:
-                # Auto-advance to the next hole after a short delay.
-                _finish_timer += delta
-                if _finish_timer >= FINISH_ADVANCE_DELAY:
-                    load_level_index(_level_index + 1)
-                    return
+                # Let the player choose: Retry (R) or Next Level (N).
+                if not _hole_complete_shown:
+                    _show_hole_complete()
     _audio.set_water(_physics.ball_is_in_water)
     _update_ball_transform()
     _update_label()
@@ -714,6 +718,46 @@ func _collect_camera_zones(node: Node) -> void:
 ## Return to the level-select menu.
 func _go_to_menu() -> void:
     get_tree().change_scene_to_file(MENU_SCENE)
+
+## Show the per-hole completion panel after sinking the ball, letting the player
+## choose to retry the same hole (R) or advance to the next hole (N) instead of
+## auto-advancing.
+func _show_hole_complete() -> void:
+    _hole_complete_shown = true
+    var panel: PanelContainer = PanelContainer.new()
+    panel.theme = MenuThemeBuilder.build()
+    panel.add_theme_stylebox_override("panel", MenuThemeBuilder.panel_box())
+    panel.set_anchors_preset(Control.PRESET_CENTER)
+    panel.position = Vector2(-170, -90)
+    panel.custom_minimum_size = Vector2(340, 180)
+
+    var vbox: VBoxContainer = VBoxContainer.new()
+    vbox.add_theme_constant_override("separation", 12)
+    panel.add_child(vbox)
+
+    var title: Label = Label.new()
+    title.text = "Hole %02d Complete!" % _level_index
+    MenuThemeBuilder.style_title(title, 26)
+    vbox.add_child(title)
+
+    var stats: Label = Label.new()
+    stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    var tag: String = "   NEW BEST!" if _is_new_best else ""
+    stats.text = "%d strokes  (%s)%s" % [_stroke_count, _par_term(_stroke_count, _par), tag]
+    vbox.add_child(stats)
+
+    var next_btn: Button = Button.new()
+    next_btn.text = "Next Level (N)"
+    next_btn.pressed.connect(func() -> void: load_level_index(_level_index + 1))
+    vbox.add_child(next_btn)
+
+    var retry: Button = Button.new()
+    retry.text = "Retry (R)"
+    retry.pressed.connect(_restart_hole)
+    vbox.add_child(retry)
+
+    _hole_complete_panel = panel
+    _ui_layer.add_child(panel)
 
 ## Show the end-of-round summary panel (total strokes vs par) after the final
 ## hole, with options to return to the menu or replay from hole 1.

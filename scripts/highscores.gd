@@ -4,6 +4,7 @@ extends Control
 ## then view the top 20 board on the right.
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
+const PLAY_SCENE := "res://scenes/golf_play.tscn"
 const LEVEL_COUNT := 20
 
 var _board_title: Label
@@ -11,6 +12,7 @@ var _board_list: VBoxContainer
 var _selector_list: VBoxContainer
 var _overall_slot: VBoxContainer
 var _status: Label
+var _play_button: Button
 var _selected_level: int = 0 # 0 = overall, 1..20 = hole board
 
 func _ready() -> void:
@@ -76,6 +78,14 @@ func _build_ui() -> void:
     back.custom_minimum_size = Vector2(160, 44)
     back.pressed.connect(_on_back_pressed)
     footer.add_child(back)
+
+    _play_button = Button.new()
+    _play_button.text = "Play Hole --"
+    _play_button.custom_minimum_size = Vector2(180, 44)
+    _play_button.disabled = true
+    _play_button.pressed.connect(_on_play_pressed)
+    footer.add_child(_play_button)
+    _update_play_button()
 
 func _make_selector_panel() -> Control:
     var panel: PanelContainer = PanelContainer.new()
@@ -235,10 +245,33 @@ func _make_selector_button(title_text: String, detail_text: String, right_text: 
 func _select_hole(level: int) -> void:
     _selected_level = level
     _refresh_board()
+    _update_play_button()
 
 func _select_overall() -> void:
     _selected_level = 0
     _refresh_board()
+    _update_play_button()
+
+func _update_play_button() -> void:
+    if _play_button == null:
+        return
+    if _selected_level >= 1:
+        _play_button.text = "Play Hole %02d" % _selected_level
+        _play_button.disabled = false
+    else:
+        _play_button.text = "Play Hole --"
+        _play_button.disabled = true
+
+func _on_play_pressed() -> void:
+    if _selected_level < 1:
+        return
+    var packed: PackedScene = load(PLAY_SCENE)
+    var inst: Node = packed.instantiate()
+    inst.set("level_path", "res://assets/levels/level-%d.level" % _selected_level)
+    var tree: SceneTree = get_tree()
+    tree.root.add_child(inst)
+    tree.current_scene.queue_free()
+    tree.current_scene = inst
 
 func _refresh_board() -> void:
     if _board_list == null:
