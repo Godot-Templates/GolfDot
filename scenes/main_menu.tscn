@@ -1,7 +1,6 @@
-[gd_scene format=3 uid="uid://bqqsenreak441"]
+[gd_scene load_steps=2 format=3 uid="uid://bqqsenreak441"]
 
 [ext_resource type="Script" uid="uid://bjlsgsi0aia3x" path="res://scripts/main_menu.gd" id="1_menu"]
-[ext_resource type="Script" uid="uid://jm3fiux6w5ot" path="res://scripts/menu_background.gd" id="2_bg"]
 
 [node name="MainMenu" type="Control" unique_id=1570462006]
 layout_mode = 3
@@ -11,36 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_menu")
-
-[node name="Base" type="ColorRect" parent="." unique_id=1119545410]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.1, 0.14, 0.18, 1)
-
-[node name="Background" type="SubViewportContainer" parent="." unique_id=1751387443]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-stretch = true
-script = ExtResource("2_bg")
-
-[node name="Dim" type="ColorRect" parent="." unique_id=1942166502]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0.06, 0.1, 0.14, 0.45)
 
 [node name="Center" type="CenterContainer" parent="." unique_id=397807659]
 layout_mode = 1

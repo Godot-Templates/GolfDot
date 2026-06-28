@@ -13,6 +13,10 @@ const MENU_SCENE := "res://scenes/main_menu.tscn"
 @onready var _hint: Label = $CenterContainer/VBox/Hint
 
 func _ready() -> void:
+    var backdrop: Node = get_node_or_null("/root/MenuBackdrop")
+    if backdrop != null and backdrop.has_method("show_for_menu"):
+        backdrop.call("show_for_menu")
+    theme = MenuThemeBuilder.build()
     _line_edit.max_length = PlayerProfile.MAX_NAME_LENGTH
     _line_edit.text = PlayerProfile.get_player_name()  # pre-fill when editing
     _line_edit.text_changed.connect(_on_text_changed)

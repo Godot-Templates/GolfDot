@@ -56,16 +56,14 @@ static func _is_unlocked(skin: Dictionary) -> bool:
     return true
 
 func _ready() -> void:
+    var backdrop: Node = get_node_or_null("/root/MenuBackdrop")
+    if backdrop != null and backdrop.has_method("show_for_menu"):
+        backdrop.call("show_for_menu")
     theme = MenuThemeBuilder.build()
     _build_ui()
     _refresh()
 
 func _build_ui() -> void:
-    var bg: ColorRect = ColorRect.new()
-    bg.color = Color(0.12, 0.16, 0.22)
-    bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-    add_child(bg)
-
     var center: CenterContainer = CenterContainer.new()
     center.set_anchors_preset(Control.PRESET_FULL_RECT)
     add_child(center)

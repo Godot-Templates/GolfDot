@@ -11,6 +11,9 @@ var _presence: Node = null
 var _total_label: Label
 
 func _ready() -> void:
+    var backdrop: Node = get_node_or_null("/root/MenuBackdrop")
+    if backdrop != null and backdrop.has_method("show_for_menu"):
+        backdrop.call("show_for_menu", Color(0.04, 0.08, 0.10, 0.56))
     theme = MenuThemeBuilder.build()
     _presence = get_node_or_null("/root/MultiplayerManager")
     if _presence != null:
@@ -24,22 +27,6 @@ func _ready() -> void:
     _refresh_presence_counts()
 
 func _build_ui() -> void:
-    var base: ColorRect = ColorRect.new()
-    base.color = Color(0.1, 0.14, 0.18, 1)
-    base.set_anchors_preset(Control.PRESET_FULL_RECT)
-    add_child(base)
-
-    var background: MenuBackground = MenuBackground.new()
-    background.set_anchors_preset(Control.PRESET_FULL_RECT)
-    background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    add_child(background)
-
-    var dim: ColorRect = ColorRect.new()
-    dim.color = Color(0.04, 0.08, 0.10, 0.56)
-    dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-    add_child(dim)
-
     var safe: MarginContainer = MarginContainer.new()
     safe.set_anchors_preset(Control.PRESET_FULL_RECT)
     safe.add_theme_constant_override("margin_left", 24)

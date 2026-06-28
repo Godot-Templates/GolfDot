@@ -25,6 +25,11 @@ var _orbit_height: float = 4.0
 var _look_target: Vector3 = Vector3.ZERO
 var _swapping: bool = false
 
+func set_active(active: bool) -> void:
+    set_process(active)
+    if _viewport != null:
+        _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if active else SubViewport.UPDATE_DISABLED
+
 func _ready() -> void:
     # Fill the parent; the scene already anchors this full-rect, but set it here
     # too so the node works if instanced standalone. With stretch=true the

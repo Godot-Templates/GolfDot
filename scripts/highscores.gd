@@ -14,6 +14,9 @@ var _status: Label
 var _selected_level: int = 0 # 0 = overall, 1..20 = hole board
 
 func _ready() -> void:
+    var backdrop: Node = get_node_or_null("/root/MenuBackdrop")
+    if backdrop != null and backdrop.has_method("show_for_menu"):
+        backdrop.call("show_for_menu", Color(0.04, 0.08, 0.10, 0.58))
     theme = MenuThemeBuilder.build()
     _build_ui()
     var lb: Node = get_node_or_null("/root/Leaderboard")
@@ -24,22 +27,6 @@ func _ready() -> void:
     _select_overall()
 
 func _build_ui() -> void:
-    var base: ColorRect = ColorRect.new()
-    base.color = Color(0.1, 0.14, 0.18, 1)
-    base.set_anchors_preset(Control.PRESET_FULL_RECT)
-    add_child(base)
-
-    var background: MenuBackground = MenuBackground.new()
-    background.set_anchors_preset(Control.PRESET_FULL_RECT)
-    background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    add_child(background)
-
-    var dim: ColorRect = ColorRect.new()
-    dim.color = Color(0.04, 0.08, 0.10, 0.58)
-    dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-    add_child(dim)
-
     var safe: MarginContainer = MarginContainer.new()
     safe.set_anchors_preset(Control.PRESET_FULL_RECT)
     safe.add_theme_constant_override("margin_left", 24)

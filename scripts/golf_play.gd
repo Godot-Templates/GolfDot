@@ -83,6 +83,9 @@ var _aim_is_keyboard: bool = false
 var _panning: bool = false
 
 func _ready() -> void:
+    var backdrop: Node = get_node_or_null("/root/MenuBackdrop")
+    if backdrop != null and backdrop.has_method("hide_for_game"):
+        backdrop.call("hide_for_game")
     _build_environment()
     _build_ui()
     _net = GolfNet.new()

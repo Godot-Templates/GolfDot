@@ -20,6 +20,10 @@ func _ready() -> void:
         call_deferred("_goto", NAME_ENTRY_SCENE)
         return
 
+    var backdrop: Node = get_node_or_null("/root/MenuBackdrop")
+    if backdrop != null and backdrop.has_method("show_for_menu"):
+        backdrop.call("show_for_menu", Color(0.06, 0.10, 0.14, 0.45))
+
     # Golf-themed fairway buttons; inherited by every Button under this Control.
     theme = MenuThemeBuilder.build()
 

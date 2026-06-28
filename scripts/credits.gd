@@ -15,10 +15,10 @@ const CREDITS := [
 ]
 
 func _ready() -> void:
-    var bg := ColorRect.new()
-    bg.color = Color(0.12, 0.16, 0.22)
-    bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-    add_child(bg)
+    var backdrop: Node = get_node_or_null("/root/MenuBackdrop")
+    if backdrop != null and backdrop.has_method("show_for_menu"):
+        backdrop.call("show_for_menu")
+    theme = MenuThemeBuilder.build()
 
     var center := CenterContainer.new()
     center.set_anchors_preset(Control.PRESET_FULL_RECT)
