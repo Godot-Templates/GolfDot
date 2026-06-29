@@ -1,0 +1,221 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/level_editor.gd" id="1_editor"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
+size = Vector2(40, 40)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
+albedo_color = Color(0.13, 0.32, 0.18, 1)
+roughness = 1.0
+
+[node name="LevelEditor" type="Node3D"]
+script = ExtResource("1_editor")
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_floor")
+material_override = SubResource("StandardMaterial3D_floor")
+
+[node name="CameraRig" type="Node3D" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+current = true
+fov = 55.0
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.872665, -0.523599, 0)
+light_energy = 1.5
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Root" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopBar" type="HBoxContainer" parent="UI/Root"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 10.0
+offset_right = -12.0
+offset_bottom = 54.0
+grow_horizontal = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="UI/Root/TopBar"]
+custom_minimum_size = Vector2(82, 0)
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 20
+text = "Editor"
+vertical_alignment = 1
+
+[node name="NewButton" type="Button" parent="UI/Root/TopBar"]
+custom_minimum_size = Vector2(56, 38)
+layout_mode = 2
+text = "New"
+
+[node name="LoadButton" type="Button" parent="UI/Root/TopBar"]
+custom_minimum_size = Vector2(56, 38)
+layout_mode = 2
+text = "Load"
+
+[node name="SaveButton" type="Button" parent="UI/Root/TopBar"]
+custom_minimum_size = Vector2(56, 38)
+layout_mode = 2
+text = "Save"
+
+[node name="ExportButton" type="Button" parent="UI/Root/TopBar"]
+custom_minimum_size = Vector2(64, 38)
+layout_mode = 2
+text = "Export"
+
+[node name="PlayTestButton" type="Button" parent="UI/Root/TopBar"]
+custom_minimum_size = Vector2(70, 38)
+layout_mode = 2
+text = "Play"
+
+[node name="TopSpacer" type="Control" parent="UI/Root/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BackButton" type="Button" parent="UI/Root/TopBar"]
+custom_minimum_size = Vector2(64, 38)
+layout_mode = 2
+text = "Back"
+
+[node name="LeftPalette" type="PanelContainer" parent="UI/Root"]
+layout_mode = 1
+anchors_preset = 0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 72.0
+offset_right = 300.0
+offset_bottom = -60.0
+
+[node name="Margin" type="MarginContainer" parent="UI/Root/LeftPalette"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VBox" type="VBoxContainer" parent="UI/Root/LeftPalette/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PaletteTitle" type="Label" parent="UI/Root/LeftPalette/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Piece Palette"
+horizontal_alignment = 1
+
+[node name="PlatformButton" type="Button" parent="UI/Root/LeftPalette/Margin/VBox"]
+layout_mode = 2
+text = "Platform"
+
+[node name="RampButton" type="Button" parent="UI/Root/LeftPalette/Margin/VBox"]
+layout_mode = 2
+text = "Ramp"
+
+[node name="WallButton" type="Button" parent="UI/Root/LeftPalette/Margin/VBox"]
+layout_mode = 2
+text = "Wall"
+
+[node name="WaterButton" type="Button" parent="UI/Root/LeftPalette/Margin/VBox"]
+layout_mode = 2
+text = "Water"
+
+[node name="BallStartButton" type="Button" parent="UI/Root/LeftPalette/Margin/VBox"]
+layout_mode = 2
+text = "Ball Start"
+
+[node name="HoleButton" type="Button" parent="UI/Root/LeftPalette/Margin/VBox"]
+layout_mode = 2
+text = "Hole"
+
+[node name="Hint" type="Label" parent="UI/Root/LeftPalette/Margin/VBox"]
+layout_mode = 2
+text = "Phase 2 will enable piece placement."
+autowrap_mode = 3
+
+[node name="RightInspector" type="PanelContainer" parent="UI/Root"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -292.0
+offset_top = 72.0
+offset_right = -12.0
+offset_bottom = -60.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="UI/Root/RightInspector"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VBox" type="VBoxContainer" parent="UI/Root/RightInspector/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="InspectorTitle" type="Label" parent="UI/Root/RightInspector/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Inspector"
+horizontal_alignment = 1
+
+[node name="SelectionLabel" type="Label" parent="UI/Root/RightInspector/Margin/VBox"]
+layout_mode = 2
+text = "No selection yet."
+
+[node name="PositionLabel" type="Label" parent="UI/Root/RightInspector/Margin/VBox"]
+layout_mode = 2
+text = "Position controls arrive in Phase 2."
+autowrap_mode = 3
+
+[node name="SnapLabel" type="Label" parent="UI/Root/RightInspector/Margin/VBox"]
+layout_mode = 2
+text = "Snapping/gizmos arrive in Phase 3."
+autowrap_mode = 3
+
+[node name="BottomBar" type="HBoxContainer" parent="UI/Root"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 320.0
+offset_top = -46.0
+offset_right = -12.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="StatusLabel" type="Label" parent="UI/Root/BottomBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.86, 0.93, 0.8, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 3
+text = "Ready."
+vertical_alignment = 1
+
+[connection signal="pressed" from="UI/Root/LeftPalette/Margin/VBox/PlatformButton" to="." method="_on_platform_button_pressed"]
+[connection signal="pressed" from="UI/Root/LeftPalette/Margin/VBox/RampButton" to="." method="_on_ramp_button_pressed"]
+[connection signal="pressed" from="UI/Root/LeftPalette/Margin/VBox/WallButton" to="." method="_on_wall_button_pressed"]
+[connection signal="pressed" from="UI/Root/LeftPalette/Margin/VBox/WaterButton" to="." method="_on_water_button_pressed"]
+[connection signal="pressed" from="UI/Root/LeftPalette/Margin/VBox/BallStartButton" to="." method="_on_ball_start_button_pressed"]
+[connection signal="pressed" from="UI/Root/LeftPalette/Margin/VBox/HoleButton" to="." method="_on_hole_button_pressed"]

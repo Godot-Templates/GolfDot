@@ -51,6 +51,11 @@ custom_minimum_size = Vector2(260, 52)
 layout_mode = 2
 text = "Level Select"
 
+[node name="LevelEditorButton" type="Button" parent="Center/VBox"]
+custom_minimum_size = Vector2(260, 52)
+layout_mode = 2
+text = "Level Editor"
+
 [node name="SkinShopButton" type="Button" parent="Center/VBox" unique_id=233434300]
 custom_minimum_size = Vector2(260, 52)
 layout_mode = 2
@@ -85,6 +90,7 @@ grow_vertical = 0
 text = "Credits"
 
 [connection signal="pressed" from="Center/VBox/LevelSelectButton" to="." method="_on_level_select_pressed"]
+[connection signal="pressed" from="Center/VBox/LevelEditorButton" to="." method="_on_level_editor_pressed"]
 [connection signal="pressed" from="Center/VBox/SkinShopButton" to="." method="_on_skin_shop_pressed"]
 [connection signal="pressed" from="Center/VBox/HighscoresButton" to="." method="_on_highscores_pressed"]
 [connection signal="pressed" from="Center/VBox/ChangeNameButton" to="." method="_on_change_name_pressed"]

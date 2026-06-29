@@ -11,6 +11,7 @@ extends Node3D
 ##   R restart hole (skips the fly-in cutscene).
 
 @export var level_path: String = "res://assets/levels/level-1.level"
+@export var return_editor_golfedit_path: String = ""
 
 const BALL_MESH := preload("res://assets/models/golf_ball.obj")
 const BALL_RADIUS := 0.12
@@ -45,12 +46,15 @@ var _presence: Node = null
 
 const MENU_SCENE := "res://scenes/level_select.tscn"
 const MAIN_MENU_SCENE := "res://scenes/main_menu.tscn"
+const LEVEL_EDITOR_SCENE := "res://scenes/level_editor.tscn"
 
 enum State { BEGIN, WAITING, AIMING, WATCHING, CELEBRATION, FINISHED }
 
 var _world: GolfCollisionWorld
 var _physics: GolfPhysics
 var _camera: GolfCamera
+var _sun_light: DirectionalLight3D
+var _world_environment: WorldEnvironment
 var _ball_mi: MeshInstance3D
 var _name_plate: Label3D
 var _aim: GolfAim
@@ -126,10 +130,10 @@ func _unhandled_input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo:
         match event.keycode:
             KEY_N, KEY_BRACKETRIGHT:
-                if not _menu_open:
+                if not _menu_open and return_editor_golfedit_path.is_empty():
                     load_level_index(_level_index + 1)
             KEY_P, KEY_BRACKETLEFT:
-                if not _menu_open:
+                if not _menu_open and return_editor_golfedit_path.is_empty():
                     load_level_index(_level_index - 1)
             KEY_R:
                 if not _menu_open:
@@ -171,6 +175,7 @@ func load_level(path: String) -> void:
     if data == null:
         push_error("golf_play: failed to load %s" % path)
         return
+    _apply_level_visual_settings(data.visual_settings)
     var res := GolfLevelBuilder.build(data, _level_root)
     _ball_start = res["ball_start"]
     _hole_pos = res["hole_pos"]
@@ -499,20 +504,35 @@ func _par_term(strokes: int, par: int) -> String:
 
 # --- Scene construction -----------------------------------------------------
 
-func _build_environment() -> void:
-    var light := DirectionalLight3D.new()
-    light.rotation_degrees = Vector3(-55, -35, 0)
-    light.shadow_enabled = true
-    add_child(light)
+func _apply_level_visual_settings(settings: Dictionary) -> void:
+    if settings.is_empty():
+        return
+    if _sun_light != null:
+        _sun_light.rotation_degrees = settings.get("sun_rotation_degrees", _sun_light.rotation_degrees)
+        _sun_light.light_energy = float(settings.get("sun_energy", _sun_light.light_energy))
+        _sun_light.shadow_enabled = bool(settings.get("shadows_enabled", _sun_light.shadow_enabled))
+    if _world_environment != null and _world_environment.environment != null:
+        var env: Environment = _world_environment.environment
+        env.background_color = settings.get("background_color", env.background_color)
+        env.ambient_light_color = settings.get("ambient_color", env.ambient_light_color)
+        env.ambient_light_energy = float(settings.get("ambient_energy", env.ambient_light_energy))
 
-    var env := WorldEnvironment.new()
+func _build_environment() -> void:
+    _sun_light = DirectionalLight3D.new()
+    _sun_light.rotation_degrees = Vector3(-55, -35, 0)
+    _sun_light.light_energy = 1.0
+    _sun_light.shadow_enabled = true
+    add_child(_sun_light)
+
+    _world_environment = WorldEnvironment.new()
     var e := Environment.new()
     e.background_mode = Environment.BG_COLOR
     e.background_color = Color(0.4, 0.6, 0.85)
     e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
     e.ambient_light_color = Color(0.6, 0.6, 0.6)
-    env.environment = e
-    add_child(env)
+    e.ambient_light_energy = 1.0
+    _world_environment.environment = e
+    add_child(_world_environment)
 
     _camera = GolfCamera.new()
     add_child(_camera)
@@ -560,6 +580,7 @@ static func make_name_plate(player_name: String) -> Label3D:
 ## be authored in the scene.
 func _build_ui() -> void:
     _apply_menu_theme()
+    _refresh_playtest_menu_labels()
 
     _presence = get_node_or_null("/root/MultiplayerManager")
     if _presence != null and _presence.has_signal("presence_counts_changed"):
@@ -598,6 +619,16 @@ func _apply_menu_theme() -> void:
     MenuThemeBuilder.style_title(board_title, 26)
     volume_label.add_theme_color_override("font_color", MenuThemeBuilder.COL_TEXT)
     _style_scorecard_icon_button()
+
+func _refresh_playtest_menu_labels() -> void:
+    if return_editor_golfedit_path.is_empty():
+        return
+    var title: Label = $UI/PauseMenu/Center/Panel/VBox/Title as Label
+    var level_select_button: Button = $UI/PauseMenu/Center/Panel/VBox/LevelSelectButton as Button
+    title.text = "Playtest"
+    level_select_button.text = "Return to Editor"
+    level_select_button.tooltip_text = "Return to %s" % return_editor_golfedit_path
+    _status_label.text = "Playtest: Esc/Menu → Return to Editor"
 
 func _style_scorecard_icon_button() -> void:
     _highscores_button.text = "🏆"
@@ -669,7 +700,8 @@ func _scorecard_icon_box(fill: Color, border: Color, border_width: int) -> Style
 ## Restart the current hole and skip the begin fly-in cutscene. Wired to the
 ## in-game menu's "Restart Hole (R)" button and the R key.
 func _restart_hole() -> void:
-    load_level_index(_level_index)
+    var restart_path: String = level_path
+    load_level(restart_path)
     if _camera != null:
         _camera.finish_begin_animation()
     _state = State.WAITING
@@ -716,9 +748,28 @@ func _collect_camera_zones(node: Node) -> void:
     for child in node.get_children():
         _collect_camera_zones(child)
 
-## Return to the level-select menu.
+## Return to the level-select menu, or back to the editor when this run came from Play Test.
 func _go_to_menu() -> void:
+    if not return_editor_golfedit_path.is_empty():
+        _return_to_level_editor()
+        return
     get_tree().change_scene_to_file(MENU_SCENE)
+
+func _return_to_level_editor() -> void:
+    var packed: PackedScene = load(LEVEL_EDITOR_SCENE) as PackedScene
+    if packed == null:
+        get_tree().change_scene_to_file(MENU_SCENE)
+        return
+    var editor_scene: Node = packed.instantiate()
+    var tree: SceneTree = get_tree()
+    tree.root.add_child(editor_scene)
+    tree.current_scene = editor_scene
+    if editor_scene.has_method("_set_current_file_path"):
+        editor_scene.call("_set_current_file_path", return_editor_golfedit_path)
+    if editor_scene.has_method("_load_golfedit"):
+        editor_scene.call("_load_golfedit")
+    tree.root.remove_child(self)
+    queue_free()
 
 ## Return to the main menu.
 func _go_to_main_menu() -> void:
@@ -754,6 +805,8 @@ func _show_hole_complete() -> void:
     var next_btn: Button = Button.new()
     next_btn.text = "Next Level (N)"
     next_btn.pressed.connect(func() -> void: load_level_index(_level_index + 1))
+    if not return_editor_golfedit_path.is_empty():
+        next_btn.visible = false
     vbox.add_child(next_btn)
 
     var retry: Button = Button.new()
@@ -762,8 +815,8 @@ func _show_hole_complete() -> void:
     vbox.add_child(retry)
 
     var menu_btn: Button = Button.new()
-    menu_btn.text = "Main Menu"
-    menu_btn.pressed.connect(_go_to_main_menu)
+    menu_btn.text = "Return to Editor" if not return_editor_golfedit_path.is_empty() else "Main Menu"
+    menu_btn.pressed.connect(_go_to_menu if not return_editor_golfedit_path.is_empty() else _go_to_main_menu)
     vbox.add_child(menu_btn)
 
     _hole_complete_panel = panel
@@ -796,16 +849,19 @@ func _show_round_summary() -> void:
     vbox.add_child(stats)
 
     var replay: Button = Button.new()
-    replay.text = "Play Again (Hole 1)"
+    replay.text = "Retry Playtest" if not return_editor_golfedit_path.is_empty() else "Play Again (Hole 1)"
     replay.pressed.connect(func() -> void:
         panel.queue_free()
         _total_strokes = 0
         _total_par = 0
-        load_level_index(1))
+        if not return_editor_golfedit_path.is_empty():
+            load_level(level_path)
+        else:
+            load_level_index(1))
     vbox.add_child(replay)
 
     var menu: Button = Button.new()
-    menu.text = "Back to Menu"
+    menu.text = "Return to Editor" if not return_editor_golfedit_path.is_empty() else "Back to Menu"
     menu.pressed.connect(_go_to_menu)
     vbox.add_child(menu)
 

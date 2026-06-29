@@ -1,3 +1,4 @@
+class_name MainMenu
 extends Control
 ## Top-level menu and the game's main scene. The layout (panning 3D backdrop,
 ## title, buttons) lives declaratively in main_menu.tscn; this script only handles
@@ -10,9 +11,12 @@ extends Control
 
 const NAME_ENTRY_SCENE := "res://scenes/name_entry.tscn"
 const LEVEL_SELECT_SCENE := "res://scenes/level_select.tscn"
+const LEVEL_EDITOR_SCENE := "res://scenes/level_editor.tscn"
 const SKIN_SHOP_SCENE := "res://scenes/skin_shop.tscn"
 const HIGHSCORES_SCENE := "res://scenes/highscores.tscn"
 const CREDITS_SCENE := "res://scenes/credits.tscn"
+
+@onready var _level_editor_button: Button = $Center/VBox/LevelEditorButton
 
 func _ready() -> void:
     # First-launch gate: force name entry before showing the menu.
@@ -26,6 +30,8 @@ func _ready() -> void:
 
     # Golf-themed fairway buttons; inherited by every Button under this Control.
     theme = MenuThemeBuilder.build()
+    if not _level_editor_button.pressed.is_connected(_on_level_editor_pressed):
+        _level_editor_button.pressed.connect(_on_level_editor_pressed)
 
     var greeting: Label = $Center/VBox/Greeting
     greeting.text = "Welcome, %s" % PlayerProfile.get_player_name()
@@ -34,6 +40,9 @@ func _ready() -> void:
 
 func _on_level_select_pressed() -> void:
     _goto(LEVEL_SELECT_SCENE)
+
+func _on_level_editor_pressed() -> void:
+    _goto(LEVEL_EDITOR_SCENE)
 
 func _on_skin_shop_pressed() -> void:
     _goto(SKIN_SHOP_SCENE)

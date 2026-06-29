@@ -17,6 +17,7 @@ var source_path: String = ""
 var materials: Dictionary = {}
 var lightmaps: Dictionary = {}
 var entities: Array = []
+var visual_settings: Dictionary = {}
 
 ## Load and parse a .level file. Returns null on failure.
 static func load_from(res_path: String) -> GolfLevelData:
@@ -37,6 +38,7 @@ static func load_from(res_path: String) -> GolfLevelData:
     return data
 
 func _parse(root: Dictionary) -> void:
+    visual_settings = _parse_visual_settings(root.get("visual_settings", {}))
     for m in root.get("materials", []):
         _parse_material(m)
     for li in root.get("lightmap_images", []):
@@ -49,6 +51,34 @@ static func remap_path(p: String) -> String:
     if p.begins_with("data/"):
         return ASSET_PREFIX + p.substr(5)
     return p
+
+func _parse_visual_settings(value: Variant) -> Dictionary:
+    var defaults: Dictionary = {
+        "background_color": Color(0.4, 0.6, 0.85),
+        "ambient_color": Color(0.6, 0.6, 0.6),
+        "ambient_energy": 1.0,
+        "sun_energy": 1.0,
+        "sun_rotation_degrees": Vector3(-55.0, -35.0, 0.0),
+        "shadows_enabled": true,
+    }
+    if typeof(value) != TYPE_DICTIONARY:
+        return defaults
+    var data: Dictionary = value as Dictionary
+    defaults["background_color"] = _color_from_array(data.get("background_color", [0.4, 0.6, 0.85, 1.0]), defaults["background_color"])
+    defaults["ambient_color"] = _color_from_array(data.get("ambient_color", [0.6, 0.6, 0.6, 1.0]), defaults["ambient_color"])
+    defaults["ambient_energy"] = float(data.get("ambient_energy", defaults["ambient_energy"]))
+    defaults["sun_energy"] = float(data.get("sun_energy", defaults["sun_energy"]))
+    defaults["sun_rotation_degrees"] = _v3(data.get("sun_rotation_degrees", [-55.0, -35.0, 0.0]))
+    defaults["shadows_enabled"] = bool(data.get("shadows_enabled", defaults["shadows_enabled"]))
+    return defaults
+
+func _color_from_array(value: Variant, fallback: Color) -> Color:
+    if not value is Array:
+        return fallback
+    var arr: Array = value as Array
+    if arr.size() < 3:
+        return fallback
+    return Color(float(arr[0]), float(arr[1]), float(arr[2]), float(arr[3]) if arr.size() > 3 else 1.0)
 
 func _parse_material(m: Dictionary) -> void:
     var entry := {
