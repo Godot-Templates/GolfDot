@@ -76,6 +76,7 @@ var _move_snap: float = DEFAULT_MOVE_SNAP
 var _rotate_snap: float = DEFAULT_ROTATE_SNAP
 var _scale_snap: float = DEFAULT_SCALE_SNAP
 var _dragging_transform: bool = false
+var _drag_axis: Vector3 = Vector3.ZERO
 var _drag_start_mouse: Vector2 = Vector2.ZERO
 var _drag_start_position: Vector3 = Vector3.ZERO
 var _drag_start_rotation: Vector3 = Vector3.ZERO
@@ -160,6 +161,10 @@ func _ready() -> void:
     _wrap_palette_in_scroll()
     _wire_palette_buttons()
     _build_transform_toolbar()
+    _build_shape_generator_palette()
+    _build_visual_palette()
+    _build_custom_levels_palette()
+    _build_validation_palette()
     _wrap_inspector_in_scroll()
     _build_inspector_controls()
     _set_dirty(false)
@@ -168,13 +173,6 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
     _update_keyboard_camera(delta)
-
-func _input(event: InputEvent) -> void:
-    if event is InputEventMouseButton:
-        var mouse_event: InputEventMouseButton = event
-        if mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT:
-            if _handle_palette_click(mouse_event.position):
-                get_viewport().set_input_as_handled()
 
 func _physics_process(_delta: float) -> void:
     if _pending_pick_position != Vector2.INF:
@@ -272,7 +270,7 @@ func _wire_top_bar() -> void:
 func _build_transform_toolbar() -> void:
     var height_hint: Label = Label.new()
     height_hint.name = "HeightHint"
-    height_hint.text = "Height: Shift+drag or PgUp/PgDn"
+    height_hint.text = "Height: drag the green arrow, Shift+drag, or PgUp/PgDn"
     height_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     height_hint.add_theme_font_size_override("font_size", 12)
     _palette_box.add_child(height_hint)
@@ -327,33 +325,20 @@ func _wire_palette_buttons() -> void:
     var hint: Label = _palette_box.get_node_or_null("Hint") as Label
     if hint != null:
         hint.visible = false
-    _build_shape_generator_palette()
-    _build_visual_palette()
-    _build_custom_levels_palette()
-    _build_validation_palette()
 
 func _build_validation_palette() -> void:
     var box: VBoxContainer = VBoxContainer.new()
     box.name = "ValidationTools"
     box.add_theme_constant_override("separation", 6)
     _palette_box.add_child(box)
-    var title_node: Node = _palette_box.get_node_or_null("PaletteTitle")
-    if title_node != null:
-        _palette_box.move_child(box, title_node.get_index() + 1)
 
     var title: Label = Label.new()
     title.text = "Validation"
     title.add_theme_font_size_override("font_size", 16)
     box.add_child(title)
 
-    var validate_button: Button = Button.new()
-    validate_button.text = "Validate Level"
-    validate_button.tooltip_text = "Check whether this custom level is ready to save/export/playtest."
-    validate_button.pressed.connect(_validate_level_for_user)
-    box.add_child(validate_button)
-
     _validation_label = Label.new()
-    _validation_label.text = "No validation run yet."
+    _validation_label.text = "Levels are validated automatically on Save, Export, and Play."
     _validation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _validation_label.add_theme_font_size_override("font_size", 12)
     box.add_child(_validation_label)
@@ -363,9 +348,6 @@ func _build_custom_levels_palette() -> void:
     box.name = "CustomLevelTools"
     box.add_theme_constant_override("separation", 6)
     _palette_box.add_child(box)
-    var title_node: Node = _palette_box.get_node_or_null("PaletteTitle")
-    if title_node != null:
-        _palette_box.move_child(box, title_node.get_index() + 1)
 
     var title: Label = Label.new()
     title.text = "Custom Levels"
@@ -396,9 +378,6 @@ func _build_visual_palette() -> void:
     _visual_box.name = "VisualSettings"
     _visual_box.add_theme_constant_override("separation", 6)
     _palette_box.add_child(_visual_box)
-    var title_node: Node = _palette_box.get_node_or_null("PaletteTitle")
-    if title_node != null:
-        _palette_box.move_child(_visual_box, title_node.get_index() + 1)
 
     var title: Label = Label.new()
     title.text = "Lighting / Visuals"
@@ -432,9 +411,6 @@ func _build_shape_generator_palette() -> void:
     _shape_generator_box.name = "ShapeGenerator"
     _shape_generator_box.add_theme_constant_override("separation", 6)
     _palette_box.add_child(_shape_generator_box)
-    var title_node: Node = _palette_box.get_node_or_null("PaletteTitle")
-    if title_node != null:
-        _palette_box.move_child(_shape_generator_box, title_node.get_index() + 1)
 
     var title: Label = Label.new()
     title.text = "Procedural Shapes"
@@ -500,7 +476,7 @@ func _set_snap_enabled(enabled: bool) -> void:
 func _refresh_mode_label() -> void:
     if _mode_label == null:
         return
-    _mode_label.text = "Mode: %s\nSnap: %s\nDrag moves X/Z" % [
+    _mode_label.text = "Mode: %s\nSnap: %s\nDrag moves X/Z\nArrows lock to one axis" % [
         _transform_mode_name(),
         "ON" if _snap_enabled else "OFF",
     ]
@@ -515,23 +491,6 @@ func _transform_mode_name() -> String:
         TransformMode.SCALE:
             return "Scale"
     return "Unknown"
-
-func _handle_palette_click(screen_position: Vector2) -> bool:
-    var button_to_type: Dictionary = {
-        "PlatformButton": "platform",
-        "RampButton": "ramp",
-        "WallButton": "wall",
-        "WaterButton": "water",
-        "BallStartButton": "ball_start",
-        "HoleButton": "hole",
-        "PropButton": "prop",
-    }
-    for button_name: String in button_to_type.keys():
-        var button: Button = _palette_box.get_node_or_null(button_name) as Button
-        if button != null and not button.disabled and button.get_global_rect().has_point(screen_position):
-            _add_piece(button_to_type[button_name] as String)
-            return true
-    return false
 
 func _on_platform_button_pressed() -> void:
     _add_piece("platform")
@@ -1372,12 +1331,26 @@ func _undo_geometry_edit() -> void:
 func _begin_viewport_transform_or_pick(screen_position: Vector2) -> void:
     if _geometry_mode and _pick_geometry_vertex_at(screen_position):
         return
+    if _transform_mode == TransformMode.MOVE:
+        var gizmo_axis: Vector3 = _move_gizmo_axis_at(screen_position)
+        if gizmo_axis != Vector3.ZERO:
+            _dragging_transform = true
+            _drag_axis = gizmo_axis
+            _drag_start_mouse = screen_position
+            _drag_start_position = _selected_piece.position
+            _drag_start_rotation = _selected_piece.rotation_degrees
+            _drag_start_scale = _selected_piece.scale
+            _drag_start_plane_point = _screen_to_horizontal_plane(screen_position, _drag_start_position.y)
+            var axis_name: String = "X" if gizmo_axis == Vector3.RIGHT else ("Y" if gizmo_axis == Vector3.UP else "Z")
+            _set_status("Dragging %s along %s." % [_selected_piece.name, axis_name])
+            return
     var piece: Node3D = _piece_at_screen_position(screen_position)
     if piece == null:
         _select_piece(null)
         return
     _select_piece(piece)
     _dragging_transform = true
+    _drag_axis = Vector3.ZERO
     _drag_start_mouse = screen_position
     _drag_start_position = piece.position
     _drag_start_rotation = piece.rotation_degrees
@@ -1385,10 +1358,45 @@ func _begin_viewport_transform_or_pick(screen_position: Vector2) -> void:
     _drag_start_plane_point = _screen_to_horizontal_plane(screen_position, _drag_start_position.y)
     _set_status("Dragging %s in %s mode." % [piece.name, _transform_mode_name()])
 
+func _move_gizmo_axis_at(screen_position: Vector2) -> Vector3:
+    if _selected_piece == null or not is_instance_valid(_selected_piece):
+        return Vector3.ZERO
+    var ray_origin: Vector3 = _camera.project_ray_origin(screen_position)
+    var ray_dir: Vector3 = _camera.project_ray_normal(screen_position)
+    var seg_a: Vector3 = _selected_piece.global_position
+    var best_axis: Vector3 = Vector3.ZERO
+    var best_distance: float = 0.16
+    for axis: Vector3 in [Vector3.RIGHT, Vector3.UP, Vector3.FORWARD]:
+        var length: float = _gizmo_axis_length(axis)
+        var half_extent: float = absf(_selected_piece.scale.dot(axis)) * 0.5
+        var seg_start: float = maxf(0.3, half_extent)
+        var distance: float = _ray_segment_distance(ray_origin, ray_dir, seg_a + axis * seg_start, seg_a + axis * (length + 0.4))
+        if distance <= best_distance:
+            best_distance = distance
+            best_axis = axis
+    return best_axis
+
+func _ray_segment_distance(ray_origin: Vector3, ray_dir: Vector3, seg_a: Vector3, seg_b: Vector3) -> float:
+    var seg_dir: Vector3 = seg_b - seg_a
+    var w0: Vector3 = ray_origin - seg_a
+    var a: float = ray_dir.dot(ray_dir)
+    var b: float = ray_dir.dot(seg_dir)
+    var c: float = seg_dir.dot(seg_dir)
+    var d: float = ray_dir.dot(w0)
+    var e: float = seg_dir.dot(w0)
+    var denom: float = a * c - b * b
+    var t: float = e / c if denom <= 0.0001 else (a * e - b * d) / denom
+    t = clampf(t, 0.0, 1.0)
+    var s: float = maxf((b * t - d) / a, 0.0)
+    var point_on_ray: Vector3 = ray_origin + ray_dir * s
+    var point_on_segment: Vector3 = seg_a + seg_dir * t
+    return point_on_ray.distance_to(point_on_segment)
+
 func _end_viewport_transform() -> void:
     if not _dragging_transform:
         return
     _dragging_transform = false
+    _drag_axis = Vector3.ZERO
     _refresh_inspector()
     _set_dirty(true)
     _set_status("Finished %s transform." % _transform_mode_name().to_lower())
@@ -1400,9 +1408,13 @@ func _update_viewport_transform(screen_position: Vector2, relative: Vector2) -> 
     match _transform_mode:
         TransformMode.MOVE:
             var next_position: Vector3 = _drag_start_position
-            if Input.is_key_pressed(KEY_SHIFT):
+            if _drag_axis == Vector3.UP or Input.is_key_pressed(KEY_SHIFT):
                 var height_delta: float = (_drag_start_mouse.y - screen_position.y) * 0.025
                 next_position.y += height_delta
+            elif _drag_axis != Vector3.ZERO:
+                var axis_plane_point: Vector3 = _screen_to_horizontal_plane(screen_position, _drag_start_position.y)
+                var axis_delta: Vector3 = axis_plane_point - _drag_start_plane_point
+                next_position += _drag_axis * axis_delta.dot(_drag_axis)
             else:
                 var plane_point: Vector3 = _screen_to_horizontal_plane(screen_position, _drag_start_position.y)
                 var delta: Vector3 = plane_point - _drag_start_plane_point
@@ -1535,9 +1547,9 @@ func _update_gizmo_visual() -> void:
     _gizmo_root.global_position = _selected_piece.global_position
     match _transform_mode:
         TransformMode.MOVE:
-            _add_gizmo_axis(Vector3.RIGHT, Color.RED, "X")
-            _add_gizmo_axis(Vector3.UP, Color.GREEN, "Y")
-            _add_gizmo_axis(Vector3.FORWARD, Color.BLUE, "Z")
+            _add_gizmo_axis(Vector3.RIGHT, Color.RED, "X", 0.05, true, _gizmo_axis_length(Vector3.RIGHT))
+            _add_gizmo_axis(Vector3.UP, Color.GREEN, "Y", 0.05, true, _gizmo_axis_length(Vector3.UP))
+            _add_gizmo_axis(Vector3.FORWARD, Color.BLUE, "Z", 0.05, true, _gizmo_axis_length(Vector3.FORWARD))
         TransformMode.ROTATE:
             _add_gizmo_ring(Color(1.0, 0.75, 0.1, 1.0))
         TransformMode.SCALE:
@@ -1545,21 +1557,42 @@ func _update_gizmo_visual() -> void:
             _add_gizmo_axis(Vector3.UP, Color(0.45, 1.0, 0.45, 1.0), "ScaleY")
             _add_gizmo_axis(Vector3.FORWARD, Color(0.45, 0.6, 1.0, 1.0), "ScaleZ")
 
-func _add_gizmo_axis(direction: Vector3, color: Color, axis_name: String) -> void:
+func _gizmo_axis_length(direction: Vector3) -> float:
+    if _selected_piece == null or not is_instance_valid(_selected_piece):
+        return 2.0
+    var half_extent: float = absf(_selected_piece.scale.dot(direction)) * 0.5
+    return half_extent + 1.2
+
+func _add_gizmo_axis(direction: Vector3, color: Color, axis_name: String, radius: float = 0.035, with_arrow: bool = false, length: float = 2.0) -> void:
     var axis: MeshInstance3D = MeshInstance3D.new()
     axis.name = axis_name
     var mesh: CylinderMesh = CylinderMesh.new()
-    mesh.top_radius = 0.035
-    mesh.bottom_radius = 0.035
-    mesh.height = 2.0
+    mesh.top_radius = radius
+    mesh.bottom_radius = radius
+    mesh.height = length
     axis.mesh = mesh
     axis.material_override = _make_unshaded_material(color)
-    axis.position = direction.normalized()
+    axis.position = direction.normalized() * length * 0.5
     if direction.is_equal_approx(Vector3.RIGHT):
         axis.rotation_degrees.z = 90.0
     elif direction.is_equal_approx(Vector3.FORWARD):
         axis.rotation_degrees.x = 90.0
     _gizmo_root.add_child(axis)
+    if with_arrow:
+        var arrow: MeshInstance3D = MeshInstance3D.new()
+        arrow.name = axis_name + "Arrow"
+        var cone: CylinderMesh = CylinderMesh.new()
+        cone.top_radius = 0.0
+        cone.bottom_radius = radius * 2.4
+        cone.height = 0.35
+        arrow.mesh = cone
+        arrow.material_override = _make_unshaded_material(color)
+        arrow.position = direction.normalized() * (length + 0.15)
+        if direction.is_equal_approx(Vector3.RIGHT):
+            arrow.rotation_degrees = Vector3(0.0, 0.0, -90.0)
+        elif direction.is_equal_approx(Vector3.FORWARD):
+            arrow.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+        _gizmo_root.add_child(arrow)
 
 func _add_gizmo_ring(color: Color) -> void:
     var vertices: PackedVector3Array = PackedVector3Array()
